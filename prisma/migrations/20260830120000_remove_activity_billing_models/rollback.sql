@@ -1,0 +1,3 @@
+-- Rollback is intentionally not automated because the deleted tables contain
+-- no retained business data and their original definitions are being retired.
+-- Restore from version control only if this decision is reversed.

@@ -1,0 +1,461 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
+}
+
+enum GenderPreferenceMode {
+  OPPOSITE
+  MALE
+  FEMALE
+  ANY
+  OTHER
+}
+
+enum MemberStatus {
+  LEAD
+  ACTIVE
+  MATCHING
+  PAUSED
+  MARRIED
+  REFUNDED
+  BLACKLISTED
+  ARCHIVED
+}
+
+enum DocumentType {
+  ID_CARD
+  HOUSEHOLD_REGISTER
+  EDUCATION_CERTIFICATE
+  INCOME_CERTIFICATE
+  DIVORCE_CERTIFICATE
+  PHOTO
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum MatchStatus {
+  CANDIDATE
+  CONTACTING
+  DATING
+  SUCCESS
+  FAILED
+  CANCELLED
+  BLOCKED
+}
+
+enum FollowUpType {
+  CALL
+  WECHAT
+  VISIT
+  DATE_FEEDBACK
+  COMPLAINT
+  RETURN_VISIT
+  OTHER
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  TRANSFERRED
+  REVOKED
+}
+
+enum BlacklistStatus {
+  ACTIVE
+  RESOLVED
+  EXPIRED
+}
+
+enum BlacklistSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AreaLevel {
+  PROVINCE
+  CITY
+  DISTRICT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+  IMPORT
+  ASSIGN
+  MATCH
+  CHECK_IN
+  PAYMENT
+  BLACKLIST_BLOCK
+  UPLOAD
+}
+
+model Employee {
+  id                      String               @id @default(cuid())
+  storeId                 String
+  email                   String
+  phoneEncrypted          String?
+  name                    String
+  passwordHash            String
+  status                  EmployeeStatus       @default(ACTIVE)
+  lastLoginAt             DateTime?
+  createdById             String?
+  updatedById             String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  roles                   StaffRole[]
+  ownedMembers            Member[]             @relation("MemberOwner")
+  createdMembers          Member[]             @relation("MemberCreator")
+  updatedMembers          Member[]             @relation("MemberUpdater")
+  assignedCustomers       CustomerAssignment[] @relation("CustomerAssignee")
+  assignedByCustomers     CustomerAssignment[] @relation("CustomerAssignedBy")
+  createdMatches          MatchRecord[]        @relation("MatchCreatedBy")
+  followUps               FollowUpRecord[]     @relation("FollowUpEmployee")
+  uploadedDocuments       MemberDocument[]     @relation("DocumentUploadedBy")
+  verifiedDocuments       MemberDocument[]     @relation("DocumentVerifiedBy")
+  createdBlacklistEntries BlacklistEntry[]     @relation("BlacklistCreatedBy")
+  auditLogs               AuditLog[]           @relation("AuditActor")
+
+  @@unique([storeId, email])
+  @@index([storeId, status])
+  @@index([createdById])
+}
+
+model Store {
+  id        String   @id
+  name      String
+  address   String?
+  phone     String?
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  storeId     String       @default("GLOBAL")
+  code        String
+  name        String
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  employees   StaffRole[]
+  permissions Permission[]
+
+  @@unique([storeId, code])
+  @@index([storeId])
+}
+
+model Permission {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  roles     Role[]
+}
+
+model StaffRole {
+  employeeId String
+  roleId     String
+  storeId    String
+  assignedAt DateTime @default(now())
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([employeeId, roleId])
+  @@index([storeId])
+  @@index([roleId])
+}
+
+model Member {
+  id                         String                @id @default(cuid())
+  storeId                    String
+  ownerEmployeeId            String
+  memberNo                   String
+  name                       String                @default("")
+  gender                     Gender                @default(UNKNOWN)
+  birthDate                  String?
+  status                     MemberStatus          @default(LEAD)
+  heightCm                   Int?
+  weightKg                   Int?
+  education                  String?
+  occupation                 String?
+  incomeRange                String?
+  maritalStatus              String?
+  housingStatus              String?
+  vehicleStatus              String?
+  hometownProvince           String?
+  hometownCity               String?
+  hometownDistrict           String?
+  currentProvince            String?
+  currentCity                String?
+  currentDistrict            String?
+  profileCompletenessPercent Int                   @default(0)
+  createdById                String?
+  updatedById                String?
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
+  owner                      Employee              @relation("MemberOwner", fields: [ownerEmployeeId], references: [id])
+  createdBy                  Employee?             @relation("MemberCreator", fields: [createdById], references: [id])
+  updatedBy                  Employee?             @relation("MemberUpdater", fields: [updatedById], references: [id])
+  sensitiveInfo              MemberSensitiveInfo?
+  matePreference             MemberMatePreference?
+  extraProfile               MemberExtraProfile?
+  initiatorMatches           MatchRecord[]         @relation("MatchInitiator")
+  candidateMatches           MatchRecord[]         @relation("MatchCandidate")
+  followUps                  FollowUpRecord[]
+  assignments                CustomerAssignment[]
+  blacklistEntries           BlacklistEntry[]
+  memberDocuments            MemberDocument[]
+
+  @@unique([storeId, memberNo])
+  @@index([storeId, ownerEmployeeId, status])
+  @@index([storeId, name])
+  @@index([storeId, currentCity, education])
+  @@index([storeId, occupation])
+  @@index([createdAt])
+}
+
+model Area {
+  code       String    @id
+  name       String
+  parentCode String?
+  level      AreaLevel
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([parentCode, level])
+  @@index([level, isActive])
+}
+
+model MemberSensitiveInfo {
+  id              String   @id @default(cuid())
+  memberId        String   @unique
+  storeId         String
+  phoneEncrypted  String?
+  phoneHash       String?
+  idCardEncrypted String?
+  idCardHash      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  member          Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@index([storeId, phoneHash])
+  @@index([storeId, idCardHash])
+}
+
+model MemberMatePreference {
+  id                        String               @id @default(cuid())
+  memberId                  String               @unique
+  storeId                   String
+  ageMin                    Int?
+  ageMax                    Int?
+  genderPreference          GenderPreferenceMode @default(OPPOSITE)
+  educationRequirement      String?
+  incomeMinAnnual           Int?
+  heightMinCm               Int?
+  heightMaxCm               Int?
+  maritalStatusRequirements String[]             @default([])
+  hasHousing                Boolean?
+  hasVehicle                Boolean?
+  smokingPreference         String?
+  drinkingPreference        String?
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+  member                    Member               @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+}
+
+model MemberExtraProfile {
+  id              String   @id @default(cuid())
+  memberId        String   @unique
+  storeId         String
+  hobbies         String?
+  selfDescription String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  member          Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+}
+
+model MemberDocument {
+  id                  String         @id @default(cuid())
+  storeId             String
+  memberId            String
+  documentType        DocumentType
+  storageKeyEncrypted String
+  fileNameEncrypted   String
+  mimeType            String
+  fileSizeBytes       Int
+  checksumHash        String
+  status              DocumentStatus @default(PENDING)
+  rejectReason        String?
+  uploadedById        String?
+  verifiedById        String?
+  verifiedAt          DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  member              Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  uploadedBy          Employee?      @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+  verifiedBy          Employee?      @relation("DocumentVerifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([storeId, memberId])
+  @@index([storeId, documentType, status])
+  @@index([checksumHash])
+}
+
+model MatchRecord {
+  id                 String           @id @default(cuid())
+  storeId            String
+  initiatorMemberId  String
+  candidateMemberId  String
+  ownerEmployeeId    String
+  status             MatchStatus      @default(CANDIDATE)
+  score              Int?
+  reasonSummary      String?
+  manualNote         String?
+  blockedByBlacklist Boolean          @default(false)
+  matchedAt          DateTime         @default(now())
+  successAt          DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  initiatorMember    Member           @relation("MatchInitiator", fields: [initiatorMemberId], references: [id], onDelete: Cascade)
+  candidateMember    Member           @relation("MatchCandidate", fields: [candidateMemberId], references: [id], onDelete: Cascade)
+  ownerEmployee      Employee         @relation("MatchCreatedBy", fields: [ownerEmployeeId], references: [id])
+  followUps          FollowUpRecord[]
+
+  @@unique([storeId, initiatorMemberId, candidateMemberId])
+  @@index([storeId, status, matchedAt])
+  @@index([storeId, ownerEmployeeId])
+}
+
+model FollowUpRecord {
+  id         String       @id @default(cuid())
+  storeId    String
+  memberId   String
+  matchId    String?
+  employeeId String
+  type       FollowUpType
+  content    String
+  nextAction String?
+  nextAt     DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  member     Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  match      MatchRecord? @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  employee   Employee     @relation("FollowUpEmployee", fields: [employeeId], references: [id])
+
+  @@index([storeId, memberId, createdAt])
+  @@index([storeId, employeeId, nextAt])
+  @@index([matchId])
+}
+
+model CustomerAssignment {
+  id                 String           @id @default(cuid())
+  storeId            String
+  memberId           String
+  assigneeEmployeeId String
+  assignedById       String
+  status             AssignmentStatus @default(ACTIVE)
+  reason             String?
+  startsAt           DateTime         @default(now())
+  endsAt             DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  member             Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  assigneeEmployee   Employee         @relation("CustomerAssignee", fields: [assigneeEmployeeId], references: [id])
+  assignedBy         Employee         @relation("CustomerAssignedBy", fields: [assignedById], references: [id])
+
+  @@index([storeId, memberId, status])
+  @@index([storeId, assigneeEmployeeId, status])
+  @@index([assignedById])
+}
+
+model BlacklistEntry {
+  id          String            @id @default(cuid())
+  storeId     String
+  memberId    String?
+  phoneHash   String?
+  idCardHash  String?
+  reason      String
+  severity    BlacklistSeverity @default(MEDIUM)
+  status      BlacklistStatus   @default(ACTIVE)
+  createdById String
+  resolvedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  member      Member?           @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  createdBy   Employee          @relation("BlacklistCreatedBy", fields: [createdById], references: [id])
+
+  @@index([storeId, status, severity])
+  @@index([storeId, phoneHash])
+  @@index([storeId, idCardHash])
+  @@index([memberId])
+}
+
+model AuditLog {
+  id              String      @id @default(cuid())
+  storeId         String
+  actorEmployeeId String?
+  action          AuditAction
+  resourceType    String
+  resourceId      String?
+  requestId       String
+  beforeHash      String?
+  afterHash       String?
+  metadataJson    Json?
+  ipHash          String?
+  userAgentHash   String?
+  createdAt       DateTime    @default(now())
+  actorEmployee   Employee?   @relation("AuditActor", fields: [actorEmployeeId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, resourceType, resourceId])
+  @@index([storeId, actorEmployeeId, createdAt])
+  @@index([requestId])
+}
+
+model AiSetting {
+  id                   String   @id @default("default")
+  provider             String
+  ollamaBaseUrl        String
+  ollamaModel          String
+  cloudBaseUrl         String
+  cloudModel           String
+  cloudApiKeyEncrypted String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}

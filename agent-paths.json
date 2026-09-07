@@ -1,0 +1,91 @@
+{
+  "mode": "open-write",
+  "orchestrator": [],
+  "roles": {
+    "backend-engineer": {
+      "allowed": [
+        "**"
+      ],
+      "owner": [
+        "src/app/api/**",
+        "src/server/**",
+        "src/lib/server/**",
+        "src/lib/auth/**"
+      ]
+    },
+    "frontend-engineer": {
+      "allowed": [
+        "**"
+      ],
+      "owner": [
+        "src/app/(public)/**",
+        "src/app/(admin)/**",
+        "src/components/**",
+        "src/app/layout.tsx",
+        "src/app/globals.css",
+        "src/lib/client/**",
+        "src/styles/**",
+        "public/**"
+      ]
+    },
+    "database-engineer": {
+      "allowed": [
+        "**"
+      ],
+      "owner": [
+        "prisma/**"
+      ]
+    },
+    "testing-engineer": {
+      "allowed": [
+        "**"
+      ],
+      "owner": [
+        "tests/**",
+        "__tests__/**",
+        "e2e/**",
+        "src/test-utils/**",
+        "vitest.config.*",
+        "vitest.setup.*",
+        "jest.config.*",
+        "playwright.config.*"
+      ]
+    },
+    "security-engineer": {
+      "allowed": [
+        "**"
+      ],
+      "owner": [
+        "security/**",
+        "docs/security/**"
+      ]
+    },
+    "devops-engineer": {
+      "allowed": [
+        "**"
+      ],
+      "owner": [
+        ".github/**",
+        "scripts/**",
+        "infra/**",
+        "Dockerfile",
+        "docker-compose.*",
+        "docker/**",
+        "deploy/**",
+        "README.md",
+        "docs/*.md",
+        "package.json",
+        "pnpm-lock.yaml",
+        "tsconfig.json",
+        "next.config.*",
+        "tailwind.config.*",
+        "eslint.config.*",
+        ".eslintrc.*",
+        ".prettierrc.*",
+        "prettier.config.*",
+        ".gitignore",
+        ".env.example"
+      ]
+    }
+  }
+}

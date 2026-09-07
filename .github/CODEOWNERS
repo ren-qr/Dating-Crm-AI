@@ -1,0 +1,51 @@
+# 路径 → 审核归属角色（由 owner_paths 生成，互不重叠）
+# 开放写权限模式：本文件代表「谁需要审核」，不代表「谁能改」——任何执行角色都可修改任意文件，
+# 但跨职责改动须在完成报告中说明并请对应 owner 复核。
+# 把 @role-id 换成真实 GitHub handle 即可启用 GitHub 代码所有者审查
+
+/src/app/api/**  @backend-engineer
+/src/server/**  @backend-engineer
+/src/lib/server/**  @backend-engineer
+/src/lib/auth/**  @backend-engineer
+/src/app/(public)/**  @frontend-engineer
+/src/app/(admin)/**  @frontend-engineer
+/src/components/**  @frontend-engineer
+/src/app/layout.tsx  @frontend-engineer
+/src/app/globals.css  @frontend-engineer
+/src/lib/client/**  @frontend-engineer
+/src/styles/**  @frontend-engineer
+/public/**  @frontend-engineer
+/prisma/**  @database-engineer
+/tests/**  @testing-engineer
+/__tests__/**  @testing-engineer
+/e2e/**  @testing-engineer
+/src/test-utils/**  @testing-engineer
+/vitest.config.*  @testing-engineer
+/vitest.setup.*  @testing-engineer
+/jest.config.*  @testing-engineer
+/playwright.config.*  @testing-engineer
+/security/**  @security-engineer
+/docs/security/**  @security-engineer
+/.github/**  @devops-engineer
+/scripts/**  @devops-engineer
+/infra/**  @devops-engineer
+/Dockerfile  @devops-engineer
+/docker-compose.*  @devops-engineer
+/docker/**  @devops-engineer
+/deploy/**  @devops-engineer
+/README.md  @devops-engineer
+/docs/*.md  @devops-engineer
+/package.json  @devops-engineer
+/pnpm-lock.yaml  @devops-engineer
+/tsconfig.json  @devops-engineer
+/next.config.*  @devops-engineer
+/tailwind.config.*  @devops-engineer
+/eslint.config.*  @devops-engineer
+/.eslintrc.*  @devops-engineer
+/.prettierrc.*  @devops-engineer
+/prettier.config.*  @devops-engineer
+/.gitignore  @devops-engineer
+/.env.example  @devops-engineer
+
+# docs/coordination/** 为共享协作区（交接单/验收/裁决，所有角色可写）——显式声明无单一 owner
+/docs/coordination/**

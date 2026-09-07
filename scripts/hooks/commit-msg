@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# 提交信息格式校验：type(scope): 摘要
+msg=$(head -1 "$1")
+# 放行 git 自动生成的 merge / revert 提交
+if echo "$msg" | grep -qE '^(Merge |Revert )'; then exit 0; fi
+if ! echo "$msg" | grep -qE '^(feat|fix|docs|refactor|test|chore|perf|ci|build)(\([a-z0-9-]+\))?: .+'; then
+  echo "✗ 提交信息不符合规范：type(scope): 摘要（如 feat(模块): 一句话摘要）"
+  exit 1
+fi

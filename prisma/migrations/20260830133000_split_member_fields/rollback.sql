@@ -1,0 +1,2 @@
+-- Rollback is intentionally manual because fields are being reclassified and
+-- existing data is test data. Restore from version control if reversed.

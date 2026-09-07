@@ -1,0 +1,3 @@
+-- Rollback is intentionally manual because the deleted tables contain no
+-- retained business data and their definitions are being retired.
+-- Restore from version control only if this decision is reversed.

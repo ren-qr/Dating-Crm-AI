@@ -1,0 +1,20 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  dod:
+    runs-on: ubuntu-latest
+    # runner 预装了 node/python/go/rust/java 等；如需特定版本，devops 自行加对应 setup step
+    steps:
+      - uses: actions/checkout@v4
+      - name: DoD 门禁
+        run: |
+          # 项目骨架未就绪时不硬失败（这是协作配置包，待 devops bootstrap 后生效）
+          if git ls-files 2>/dev/null | grep -qE '(^|/)(package\.json|go\.mod|requirements\.txt|pyproject\.toml|setup\.(py|cfg)|Cargo\.toml|Gemfile|pom\.xml|build\.gradle|composer\.json|pubspec\.yaml|[^/]+\.(csproj|sln)|Package\.swift|mix\.exs|CMakeLists\.txt|Makefile|deno\.jsonc?|build\.zig)$'; then
+            pnpm install --frozen-lockfile
+            pnpm lint
+            pnpm typecheck
+            pnpm test
+            pnpm build
+          else
+            echo "ℹ️ 尚无项目骨架 —— 协作配置包，待 devops-engineer 初始化后 CI 生效。"
+          fi

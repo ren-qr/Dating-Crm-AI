@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# 角色检查（开放写权限模式）：提交前对执行角色只做「跨职责提醒」——改动落在其他角色
+# owner_paths 内时打印警告提示报告 + 复核，但不阻断提交；orchestrator 例外：只读角色，
+# 写任何文件都会被阻断（exit 1）。
+# 把 AGENT_ROLE 设成当前角色，或改下面的默认值。
+ROLE="${AGENT_ROLE:-}"
+[ -z "$ROLE" ] && { echo "⚠ 未设置 AGENT_ROLE，跳过角色检查（export AGENT_ROLE=backend-engineer 后生效）"; exit 0; }
+bash scripts/check-allowed-paths.sh "$ROLE"

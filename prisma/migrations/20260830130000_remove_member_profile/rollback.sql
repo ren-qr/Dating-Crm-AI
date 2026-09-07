@@ -1,0 +1,2 @@
+-- Rollback is intentionally manual. MemberProfile is being retired while its
+-- business fields remain on Member; restore only if this decision is reversed.
