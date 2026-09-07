@@ -2,12 +2,15 @@ import { isDeepStrictEqual } from "node:util";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { capabilityRequestSchema } from "@/agent-system/contracts/capability-request";
+import { capabilityRequestSchema, type CapabilityRequest } from "@/agent-system/contracts/capability-request";
 import type { EvalTurn, Phase1EvalDataset } from "@/agent-system/eval/phase1-runner";
+import { AreaResolver } from "@/agent-system/gateway/area-resolver";
+import { resolveSearchSemantics } from "@/agent-system/gateway/semantic-resolver";
 import { managerDecisionSchema, ModelManager } from "@/agent-system/runtime/manager";
 import type { ModelContextView } from "@/agent-system/runtime/context-builder";
 import { completeAiText } from "@/agent-system/shared/ai/client";
 import { getAiConfig } from "@/agent-system/shared/ai/config";
+import { emptyWorkingState, type WorkingState } from "@/agent-system/state/working-state";
 
 const enabled = process.env.AGENT_REAL_EVAL_ENABLED === "1";
 const capabilities: ModelContextView["capabilities"] = [
@@ -33,26 +36,151 @@ function expectedDecision(turn: EvalTurn) {
   return parsed.success ? parsed.data : null;
 }
 
-function matchesDecision(expected: NonNullable<ReturnType<typeof expectedDecision>>, actual: unknown) {
-  if (expected.kind === "answer") return (actual as { kind?: string })?.kind === "answer";
-  const parsed = capabilityRequestSchema.safeParse((actual as { request?: unknown })?.request);
-  return (actual as { kind?: string })?.kind === "capability" &&
-    parsed.success &&
-    parsed.data.capability === expected.request.capability &&
-    parsed.data.requestMode === expected.request.requestMode &&
-    isDeepStrictEqual(parsed.data.args, expected.request.args);
+type NormalizedRequest = {
+  intent: Record<string, unknown>;
+  resolvedFilters: Record<string, unknown>;
+};
+
+const genderAliases: Record<string, string> = {
+  男: "MALE",
+  男性: "MALE",
+  女: "FEMALE",
+  女性: "FEMALE",
+};
+
+function normalizedIntent(request: CapabilityRequest) {
+  return Object.fromEntries(Object.entries(request.args).map(([field, argument]) => {
+    const operator = "operator" in argument ? argument.operator ?? null : null;
+    if (field === "currentLocation" || field === "hometownLocation") {
+      return [field, { kind: argument.kind, operator, value: "[resolved-by-area]" }];
+    }
+    const value = field === "gender" && argument.kind === "exact" && typeof argument.value === "string"
+      ? genderAliases[argument.value] ?? argument.value
+      : argument.value ?? null;
+    return [field, { kind: argument.kind, operator, value }];
+  }));
 }
 
-function nextWorkingState(turn: EvalTurn, actual: unknown, previous: ModelContextView["working"]): ModelContextView["working"] {
-  const request = capabilityRequestSchema.safeParse((actual as { request?: unknown })?.request);
-  if (request.success && request.data.capability === "search_members") {
-    return { ...previous, stateVersion: previous.stateVersion + 1, hasActiveQuery: true, activeFilters: request.data.args as Record<string, unknown>, selectedMember: false };
+async function normalizeRequest(
+  request: CapabilityRequest,
+  state: WorkingState,
+  areas: AreaResolver,
+): Promise<NormalizedRequest | null> {
+  if (request.capability !== "search_members") {
+    return { intent: normalizedIntent(request), resolvedFilters: {} };
   }
-  if (turn.expect.capability === "get_member_profile") {
-    return { ...previous, stateVersion: previous.stateVersion + 1, selectedMember: true };
-  }
-  return previous;
+  const resolved = await resolveSearchSemantics(request, state, areas);
+  if ("status" in resolved) return null;
+  // The replay mirrors the Gateway's semantic output and then adds the same
+  // search defaults. It intentionally does not invoke the final input schema:
+  // Area currently contains variable-length codes, while that legacy schema is
+  // still six-digit-only and is tracked as a separate production contract gap.
+  return {
+    intent: normalizedIntent(request),
+    resolvedFilters: {
+      ...resolved.args,
+      page: Number(resolved.args.page ?? 1),
+      pageSize: Number(resolved.args.pageSize ?? 10),
+    },
+  };
 }
+
+function modelWorkingState(state: WorkingState): ModelContextView["working"] {
+  return {
+    stateVersion: state.stateVersion,
+    hasActiveQuery: Boolean(state.activeQuery),
+    activeFilters: state.activeQuery?.resolvedFilters ?? null,
+    selectedMember: Boolean(state.selectedMemberId),
+    clarification: null,
+  };
+}
+
+function commitReplayQuery(state: WorkingState, request: CapabilityRequest, normalized: NormalizedRequest) {
+  if (request.capability === "search_members") {
+    state.stateVersion += 1;
+    state.activeQuery = {
+      queryId: "real-provider-eval-query",
+      semanticFilters: request.args,
+      resolvedFilters: normalized.resolvedFilters,
+      resultRef: "real-provider-eval-result",
+      resultMemberIds: [],
+      page: Number(normalized.resolvedFilters.page ?? 1),
+      pageSize: Number(normalized.resolvedFilters.pageSize ?? 10),
+      resultCount: 0,
+    };
+    state.selectedMemberId = null;
+  }
+}
+
+async function matchesDecision(
+  expected: NonNullable<ReturnType<typeof expectedDecision>>,
+  actual: unknown,
+  state: WorkingState,
+  areas: AreaResolver,
+) {
+  if (expected.kind === "answer") return { pass: (actual as { kind?: string })?.kind === "answer", normalized: null };
+  const parsed = capabilityRequestSchema.safeParse((actual as { request?: unknown })?.request);
+  if ((actual as { kind?: string })?.kind !== "capability" || !parsed.success) return { pass: false, normalized: null };
+  const [expectedNormalized, actualNormalized] = await Promise.all([
+    normalizeRequest(expected.request, state, areas),
+    normalizeRequest(parsed.data, state, areas),
+  ]);
+  if (!expectedNormalized || !actualNormalized) return { pass: false, normalized: actualNormalized };
+  return {
+    pass:
+      parsed.data.capability === expected.request.capability &&
+      parsed.data.requestMode === expected.request.requestMode &&
+      isDeepStrictEqual(actualNormalized.intent, expectedNormalized.intent) &&
+      isDeepStrictEqual(actualNormalized.resolvedFilters, expectedNormalized.resolvedFilters),
+    normalized: actualNormalized,
+  };
+}
+
+describe("Real-provider replay normalization", () => {
+  it("stores production-like resolved filters for age and area before a refine turn", async () => {
+    const areas = {
+      resolve: async (value: string) =>
+        value.startsWith("上海")
+          ? { code: "3101", name: "上海市", level: "CITY" as const }
+          : { status: "ClarificationRequired" as const, message: "unknown area" },
+    } as AreaResolver;
+    const state = emptyWorkingState();
+    const first = capabilityRequestSchema.parse({
+      capability: "search_members",
+      args: {
+        age: { kind: "semantic", operator: "around", concept: "28岁左右", value: 28 },
+        currentLocation: { kind: "exact", value: "上海市" },
+        gender: { kind: "exact", value: "女性" },
+      },
+    });
+    const normalizedFirst = await normalizeRequest(first, state, areas);
+    expect(normalizedFirst).toMatchObject({
+      intent: {
+        age: { kind: "semantic", operator: "around", value: 28 },
+        currentLocation: { kind: "exact", value: "[resolved-by-area]" },
+        gender: { kind: "exact", value: "FEMALE" },
+      },
+      resolvedFilters: { ageMin: 26, ageMax: 30, currentCityCode: "3101", gender: "FEMALE", page: 1, pageSize: 10 },
+    });
+    if (!normalizedFirst) throw new Error("expected normalized initial request");
+    commitReplayQuery(state, first, normalizedFirst);
+
+    const refine = capabilityRequestSchema.parse({
+      capability: "search_members",
+      requestMode: "refine_query",
+      args: { age: { kind: "semantic", operator: "younger" } },
+    });
+    const normalizedRefine = await normalizeRequest(refine, state, areas);
+    expect(normalizedRefine?.resolvedFilters).toMatchObject({
+      ageMin: 24,
+      ageMax: 28,
+      currentCityCode: "3101",
+      gender: "FEMALE",
+      page: 1,
+      pageSize: 10,
+    });
+  });
+});
 
 describe.runIf(enabled)("Phase 1 real-provider manager eval", () => {
   it("replays structured scenarios with full CapabilityRequest argument comparison", async () => {
@@ -63,19 +191,21 @@ describe.runIf(enabled)("Phase 1 real-provider manager eval", () => {
     const manager = new ModelManager((system, content) =>
       completeAiText({ messages: [{ role: "system", content: system }, { role: "user", content }] }, config),
     );
+    const areas = new AreaResolver();
     const results: RealEvalResult[] = [];
 
     for (const scenario of dataset.scenarios) {
       const history: ModelContextView["history"] = [];
-      let working: ModelContextView["working"] = { stateVersion: 0, hasActiveQuery: false, activeFilters: null, selectedMember: false, clarification: null };
+      const replayState = emptyWorkingState();
 
       for (const [index, turn] of scenario.turns.entries()) {
         const expected = expectedDecision(turn);
         const deterministicOnly = turn.managerDecision !== undefined && !expected;
-        const view: ModelContextView = { input: turn.input, history: [...history], working, capabilities };
+        const view: ModelContextView = { input: turn.input, history: [...history], working: modelWorkingState(replayState), capabilities };
         const started = Date.now();
         let actual: unknown = null;
         let pass = false;
+        let normalized: NormalizedRequest | null = null;
         const mode = expected ? "provider" : "server_local";
 
         if (deterministicOnly) {
@@ -84,7 +214,9 @@ describe.runIf(enabled)("Phase 1 real-provider manager eval", () => {
         } else if (expected) {
           try {
             actual = await manager.decide(view);
-            pass = matchesDecision(expected, actual);
+            const scored = await matchesDecision(expected, actual, replayState, areas);
+            pass = scored.pass;
+            normalized = scored.normalized;
           } catch (error) {
             actual = { error: error instanceof Error ? error.name : "ProviderError" };
           }
@@ -94,10 +226,14 @@ describe.runIf(enabled)("Phase 1 real-provider manager eval", () => {
           pass = turn.expect.capability === "get_member_profile";
         }
 
-        results.push({ case_id: scenario.id, turn: index + 1, input: turn.input, mode, expected: expected ?? (deterministicOnly ? { deterministic_only: true } : { server_local: turn.expect.capability ?? null }), actual, context: { history: view.history, working: view.working }, pass, failure_stage: pass ? null : "Manager", latency_ms: Date.now() - started });
+        results.push({ case_id: scenario.id, turn: index + 1, input: turn.input, mode, expected: expected ?? (deterministicOnly ? { deterministic_only: true } : { server_local: turn.expect.capability ?? null }), actual: normalized ? { decision: actual, normalized } : actual, context: { history: view.history, working: view.working }, pass, failure_stage: pass ? null : "Manager", latency_ms: Date.now() - started });
         history.push({ role: "user", content: turn.input });
         history.push({ role: "assistant", content: pass ? "已处理上一轮请求。" : "上一轮请求未通过评估。" });
-        working = nextWorkingState(turn, actual, working);
+        if (normalized && expected?.kind === "capability") commitReplayQuery(replayState, expected.request, normalized);
+        if (!expected && !deterministicOnly && turn.expect.capability === "get_member_profile") {
+          replayState.stateVersion += 1;
+          replayState.selectedMemberId = "server-local-selected-member";
+        }
       }
     }
 
