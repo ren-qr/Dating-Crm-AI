@@ -3,7 +3,11 @@ import forms from "@tailwindcss/forms";
 import typography from "@tailwindcss/typography";
 
 const config: Config = {
-  content: ["./src/app/**/*.{ts,tsx}", "./src/components/**/*.{ts,tsx}"],
+  content: [
+    "./src/app/**/*.{ts,tsx}",
+    "./src/components/**/*.{ts,tsx}",
+    "./src/interface/**/*.{ts,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
