@@ -1,6 +1,6 @@
 # Agent Runtime v0.3 - Phase 1 实施记录
 
-状态：已实现，待真实数据库与真实模型质量门槛验收。日期：2026-09-07。
+状态：Phase 1 工程门禁通过；真实模型质量评测待可用凭据。日期：2026-09-07。
 
 ## 范围
 
@@ -101,7 +101,7 @@ RawResult
 
 - 定向确定性、契约、权限与安全测试：`pnpm vitest run tests/agent-runtime`。
 - 真实模型评测命令：`pnpm eval:agent:real`；缺失可用 Provider 时应报告 `NOT RUN`，不伪造质量百分比。
-- 当前环境此前无可连接 PostgreSQL，真实数据库/Area 种子、AI Provider 和跨进程状态恢复未验收。
-- 全仓库旧 CRM 路由仍有 Schema V3.1 重构遗留的 TypeScript/测试问题，需与 Phase 1 独立修复；不能把它们视为 Agent 已验收。
-
-本轮实际结果：`tests/agent-runtime` 为 4 files / 15 tests 通过；`pnpm lint` 通过；离线数据集为 60 条；`pnpm eval:agent:real` 输出 `Real-model eval: NOT RUN (credentials unavailable)`。`pnpm test` 结果为 134 passed / 28 failed，失败来自旧 Member API 未导出 GET、旧 `src/components` 路径断言、已删除/拆分的旧 Member 字段及本机 PostgreSQL 不可达。`pnpm typecheck` 与 `pnpm build` 同样由这些旧 CRM 文件（最先阻塞为 `blacklists/route.ts` 的隐式 any）失败；本轮 Agent、AI chat、Area route 与新增 Agent 测试未出现在类型检查错误中。`pnpm prisma migrate status` 因 `localhost:5432` 不可达而无法读取实际 migration 状态；本轮未创建或执行 migration。
+- 已对齐 CRM 生产路径和 Schema V3.1：会员敏感资料从 `MemberSensitiveInfo` 读取，择偶要求与多元资料使用对应扩展关系；不再将已废弃字段放回 `Member`。
+- `pnpm prisma migrate status` 已确认数据库 Schema 与 21 个现有 migration 一致；本轮未创建或执行 migration。
+- 全仓 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build` 均已通过。数据库关系回归测试已在当前配置数据库执行。
+- 真实模型评测仍取决于部署环境的可用 Provider；无凭据时命令输出 `Real-model eval: NOT RUN (credentials unavailable)`。

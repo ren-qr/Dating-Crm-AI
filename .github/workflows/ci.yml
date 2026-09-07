@@ -6,6 +6,13 @@ jobs:
     # runner 预装了 node/python/go/rust/java 等；如需特定版本，devops 自行加对应 setup step
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
       - name: DoD 门禁
         run: |
           # 项目骨架未就绪时不硬失败（这是协作配置包，待 devops bootstrap 后生效）

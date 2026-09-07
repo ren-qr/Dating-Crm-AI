@@ -284,11 +284,9 @@ export async function DELETE(request: Request, context: RouteContext) {
         select: {
           ownedMembers: true,
           followUps: true,
-          createdBillingOrders: true,
-          paymentRecords: true,
           assignedCustomers: true,
-          assignedReminders: true,
-          exportJobs: true,
+          createdMatches: true,
+          createdBlacklistEntries: true,
         },
       },
     },
@@ -316,11 +314,9 @@ export async function DELETE(request: Request, context: RouteContext) {
   const dependencyCount =
     current._count.ownedMembers +
     current._count.followUps +
-    current._count.createdBillingOrders +
-    current._count.paymentRecords +
     current._count.assignedCustomers +
-    current._count.assignedReminders +
-    current._count.exportJobs;
+    current._count.createdMatches +
+    current._count.createdBlacklistEntries;
 
   if (dependencyCount > 0) {
     return apiResponse(request, {

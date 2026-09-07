@@ -1,8 +1,8 @@
 # Meetra V3 重建基线
 
-这是婚恋门店 CRM 项目。后台 AI 入口已接入新的 v0.3 Manager Runtime 最小闭环，保留 CRM、登录、PostgreSQL/Prisma、模型配置与后台 UI。本轮没有变更数据库结构。
+这是婚恋门店 CRM 项目。后台 AI 入口已接入新的 v0.3 Manager Runtime 最小闭环，保留 CRM、登录、PostgreSQL/Prisma、模型配置与后台 UI。本轮没有变更数据库结构；CRM API 已对齐 Schema V3.1。
 
-新 Runtime 的目录、契约、边界、测试及未完成项见 [Agent Runtime v0.3](docs/agent-runtime-v0.3.md)。[docs/v3](docs/v3) 保留历史设计，不再作为新 Agent 执行架构。本项目仍存在 CRM 历史类型检查及回归测试失败，详见新 Runtime 文档，不能视为全项目已验收。
+新 Runtime 的目录、契约、边界、测试及未完成项见 [Agent Runtime v0.3](docs/agent-runtime-v0.3.md)。[docs/v3](docs/v3) 保留历史设计，不再作为新 Agent 执行架构。
 
 ## 保留与移出
 

@@ -391,11 +391,9 @@ describe("DELETE /api/v1/staff/{id}", () => {
       _count: {
         ownedMembers: 0,
         followUps: 0,
-        createdBillingOrders: 0,
-        paymentRecords: 0,
         assignedCustomers: 0,
-        assignedReminders: 0,
-        exportJobs: 0,
+        createdMatches: 0,
+        createdBlacklistEntries: 0,
       },
     });
     mocks.transaction.mockImplementation(async (callback) => callback({
@@ -430,11 +428,9 @@ describe("DELETE /api/v1/staff/{id}", () => {
       _count: {
         ownedMembers: 1,
         followUps: 0,
-        createdBillingOrders: 0,
-        paymentRecords: 0,
         assignedCustomers: 0,
-        assignedReminders: 0,
-        exportJobs: 0,
+        createdMatches: 0,
+        createdBlacklistEntries: 0,
       },
     });
 

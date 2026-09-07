@@ -8,7 +8,7 @@ describe("member detail frontend acceptance surface", () => {
       "src/app/(admin)/members/[id]/page.tsx",
       "src/app/members/[id]/page.tsx",
       "src/components/member-detail.tsx",
-      "src/components/member-workbench.tsx",
+      "src/interface/web/components/member-workbench.tsx",
     ];
 
     expect(

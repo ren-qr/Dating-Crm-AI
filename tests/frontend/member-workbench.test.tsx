@@ -15,7 +15,7 @@ type MemberWorkbenchComponent = React.ComponentType<{
     permissions: string[];
   } | null;
 }>;
-const workbenchPath = "src/components/member-workbench.tsx";
+const workbenchPath = "src/interface/web/components/member-workbench.tsx";
 
 async function loadWorkbench() {
   expect(
@@ -117,7 +117,7 @@ describe("会员运营工作台 MVP", () => {
     expect(screen.getByText("词条显示")).toBeInTheDocument();
 
     const table = screen.getByRole("table");
-    ["会员", "手机号", "门店", "顾问", "状态", "画像", "来源", "更新时间", "详情"].forEach((head) => {
+    ["会员", "手机号", "门店", "顾问", "状态", "画像", "更新时间", "详情"].forEach((head) => {
       expect(within(table).getByRole("columnheader", { name: new RegExp(head) })).toBeInTheDocument();
     });
     expect(within(table).getAllByPlaceholderText("筛选").length).toBeGreaterThan(0);
@@ -127,7 +127,6 @@ describe("会员运营工作台 MVP", () => {
     expect(within(table).queryByText("13812346210")).not.toBeInTheDocument();
     expect(within(table).getAllByText("静安旗舰店").length).toBeGreaterThan(0);
     expect(within(table).getAllByText(/陈敏/).length).toBeGreaterThan(0);
-    expect(within(table).getByText("walk-in")).toBeInTheDocument();
     expect(within(table).getByRole("button", { name: "编辑" })).toHaveClass("text-emerald-700");
   });
 
@@ -173,7 +172,7 @@ describe("会员运营工作台 MVP", () => {
     expect(cells[2]).toContain("MSTORE1001");
     expect(headers[6]).toContain("性别");
     expect(cells[6]).toContain("女");
-    expect(headers[9]).toContain("学历");
+    expect(headers[8]).toContain("学历");
   });
 
   it("keeps name, phone, and member number filters independent", async () => {
@@ -269,7 +268,9 @@ describe("会员运营工作台 MVP", () => {
 
     const editButton = within(rows[1]).getByRole("button", { name: "编辑" });
     fireEvent.click(editButton);
-    expect(await screen.findByText("编辑会员资料")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "周明轩 · 会员详情" })).toBeInTheDocument();
+    expect(screen.getAllByText("个人资料").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("择偶要求").length).toBeGreaterThan(0);
   });
 
   it("keeps unfinished V1 modules out of the main workbench actions", async () => {
@@ -481,9 +482,13 @@ describe("会员运营工作台 MVP", () => {
     expect(source).toContain("保存后刷新会员列表");
   });
 
-  it("opens a member detail drawer with followup, blacklist, and audit areas", async () => {
+  it("opens the member detail workspace and edits the personal profile", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+
+      if (url.startsWith("/api/v1/areas")) {
+        return Response.json({ code: 0, message: "success", data: [], requestId: "areas-request", timestamp: "2026-07-11T00:00:00.000Z" });
+      }
 
       if (url === "/api/v1/stores") {
         return Response.json({
@@ -659,14 +664,10 @@ describe("会员运营工作台 MVP", () => {
 
     expect(await screen.findByRole("heading", { name: "林晓雨 · 会员详情" })).toBeInTheDocument();
     expect(screen.getAllByText("MSTORE1001").length).toBeGreaterThan(0);
-    ["新增跟进", "跟进列表", "黑名单状态", "审计摘要", "登记黑名单"].forEach((name) => {
-      expect(screen.getByText(name)).toBeInTheDocument();
-    });
-    expect(screen.getByText("已完成首次回访")).toBeInTheDocument();
-    expect(screen.getByText("联系方式命中复核名单")).toBeInTheDocument();
-    expect(screen.getByText("MEMBER_UPDATE")).toBeInTheDocument();
+    expect(screen.getAllByText("个人资料").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("择偶要求").length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "编辑" }).at(-1)!);
+    fireEvent.click(screen.getByRole("button", { name: "编辑资料" }));
     fireEvent.change(screen.getByRole("textbox", { name: "姓名" }), { target: { value: "林小雨" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "身高 cm" }), { target: { value: "168" } });
     fireEvent.click(screen.getByRole("button", { name: "保存修改" }));

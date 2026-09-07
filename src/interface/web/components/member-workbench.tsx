@@ -91,7 +91,6 @@ const initialForm: CreateMemberInput = {
   name: "",
   phone: "",
   gender: "UNKNOWN",
-  source: "walk-in",
   education: "",
   maritalStatus: "",
 };
@@ -110,7 +109,7 @@ const initialBlacklist: Omit<CreateBlacklistInput, "memberId"> = {
 
 type EditMemberInput = CreateMemberInput & { status?: string };
 
-type MemberFormErrors = Partial<Record<"name" | "phone" | "birthDate" | "source" | "heightCm" | "weightKg", string>>;
+type MemberFormErrors = Partial<Record<"name" | "phone" | "birthDate" | "heightCm" | "weightKg", string>>;
 type ColumnKey =
   | "name"
   | "phone"
@@ -119,7 +118,6 @@ type ColumnKey =
   | "owner"
   | "status"
   | "gender"
-  | "source"
   | "profileCompleteness"
   | "education"
   | "heightCm"
@@ -133,29 +131,9 @@ type ColumnKey =
 
 const mainlandMobilePattern = /^1[3-9]\d{9}$/;
 const memberNamePattern = /^[\p{L}\p{M}·.' ]+$/u;
-const visibleTextPattern = /^[^\p{C}]+$/u;
 const educationOptions = ["初中及以下", "高中/中专", "大专", "本科", "硕士", "博士", "其他"];
 const maritalStatusOptions = ["未婚", "离异", "丧偶", "未知"];
 const incomeRangeOptions = ["保密", "10万以下", "10-20万", "20-30万", "30-50万", "50-100万", "100万以上"];
-const cityOptions = [
-  "国外",
-  "北京-北京",
-  "上海-上海",
-  "天津-天津",
-  "重庆-重庆",
-  "浙江-杭州",
-  "浙江-宁波",
-  "江苏-南京",
-  "江苏-苏州",
-  "广东-广州",
-  "广东-深圳",
-  "四川-成都",
-  "湖北-武汉",
-  "湖南-长沙",
-  "福建-厦门",
-  "山东-青岛",
-  "陕西-西安",
-];
 const statusRules = [
   "新增会员默认进入“线索”。",
   "登记有效黑名单会自动切到“黑名单”，并触发后续高风险动作拦截。",
@@ -169,7 +147,6 @@ const tableColumns: { key: ColumnKey; label: string; defaultVisible: boolean; so
   { key: "owner", label: "顾问", defaultVisible: true },
   { key: "status", label: "状态", defaultVisible: true },
   { key: "gender", label: "性别", defaultVisible: false },
-  { key: "source", label: "来源", defaultVisible: true },
   { key: "profileCompleteness", label: "画像", defaultVisible: true },
   { key: "education", label: "学历", defaultVisible: false },
   { key: "heightCm", label: "身高", defaultVisible: false },
@@ -621,8 +598,6 @@ function renderMemberCell(member: MemberListItem, column: ColumnKey, storeOption
       );
     case "gender":
       return memberGenderLabel(member.gender);
-    case "source":
-      return member.source ?? member.planName ?? "-";
     case "profileCompleteness":
       return (
         <>
@@ -669,8 +644,6 @@ function memberCellTitle(member: MemberListItem, column: ColumnKey, storeOptions
       return statusLabels[member.status] ?? member.status;
     case "gender":
       return memberGenderLabel(member.gender);
-    case "source":
-      return member.source ?? member.planName ?? "-";
     case "profileCompleteness":
       return `${member.profileCompletenessPercent ?? 0}%`;
     case "education":
@@ -945,7 +918,7 @@ function MemberDetailDrawer({
             <Panel title="个人资料" action={<button type="button" className="h-8 rounded-md border border-zinc-300 px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50" disabled={!canEdit} onClick={() => setEditing((value) => !value)}>{editing ? "取消编辑" : "编辑资料"}</button>}>
               {editing ? <form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={submitEdit}>
                 <TextField label="姓名" value={editForm.name} required onChange={(name) => setEditForm((value) => ({ ...value, name }))} />
-                <SelectField label="性别" value={editForm.gender ?? "UNKNOWN"} options={[{ value: "MALE", label: "男" }, { value: "FEMALE", label: "女" }, { value: "OTHER", label: "其他" }, { value: "UNKNOWN", label: "未知" }]} onChange={(gender) => setEditForm((value) => ({ ...value, gender }))} />
+                <SelectField label="性别" value={editForm.gender ?? "UNKNOWN"} options={[{ value: "MALE", label: "男" }, { value: "FEMALE", label: "女" }, { value: "OTHER", label: "其他" }, { value: "UNKNOWN", label: "未知" }]} onChange={(gender) => setEditForm((value) => ({ ...value, gender: gender as import("@/interface/shared/legacy-client/members").Gender }))} />
                 <TextField label="出生日期" value={editForm.birthDate?.slice(0, 10) ?? ""} type="date" onChange={(birthDate) => setEditForm((value) => ({ ...value, birthDate: birthDate ? new Date(birthDate).toISOString() : undefined }))} />
                 <SelectField label="状态" value={editForm.status ?? current.status} options={filters.statuses.map(([value, label]) => ({ value, label }))} onChange={(status) => setEditForm((value) => ({ ...value, status }))} />
                 <SelectField label="学历" value={editForm.education ?? ""} options={[{ value: "", label: "请选择" }, ...educationOptions.map((value) => ({ value, label: value }))]} onChange={(education) => setEditForm((value) => ({ ...value, education: education || undefined }))} />
@@ -1027,12 +1000,10 @@ function MemberDetailDrawer({
               <KeyValue label="会员编号" value={current.memberNo ?? current.id} />
               <KeyValue label="手机号" value={current.phone ?? current.phoneMasked ?? "未登记"} />
               <KeyValue label="身份证号" value={current.idCard ?? current.idCardMasked ?? "未登记"} />
-              <KeyValue label="邮箱" value={current.emailMasked ?? "未登记"} />
               <KeyValue label="性别" value={memberGenderLabel(current.gender)} />
               <KeyValue label="出生日期" value={current.birthDate?.slice(0, 10) ?? "-"} />
               <KeyValue label="门店" value={current.storeName ?? labelOf(storeOptions, current.storeId) ?? current.storeId ?? "-"} />
               <KeyValue label="归属员工" value={current.ownerName ?? current.consultantName ?? "未分配"} />
-              <KeyValue label="来源" value={current.source ?? "-"} />
             </Panel>
 
             <Panel title="会员画像">
@@ -1046,9 +1017,7 @@ function MemberDetailDrawer({
               <KeyValue label="车辆情况" value={profile.vehicleStatus ?? "-"} />
               <KeyValue label="籍贯" value={profile.hometown ?? "-"} />
               <KeyValue label="所在城市" value={profile.currentCity ?? "-"} />
-              <KeyValue label="家庭背景" value={profile.familyBackground ?? "-"} />
               <KeyValue label="自我介绍" value={profile.selfDescription ?? "-"} />
-              <KeyValue label="择偶偏好" value={profile.matePreference ?? profile.expectationSummary ?? "-"} />
             </Panel>
           </section>
 
@@ -1105,14 +1074,7 @@ function MemberDetailDrawer({
                 <AreaCascade label="籍贯" province={editForm.hometownProvince} city={editForm.hometownCity} district={editForm.hometownDistrict} provinces={provinces} cities={hometownCities} districts={hometownDistricts} onChange={(area) => setEditForm((currentForm) => ({ ...currentForm, ...area }))} />
                 <AreaCascade label="现居地区" province={editForm.currentProvince} city={editForm.currentCity} district={editForm.currentDistrict} provinces={provinces} cities={currentCities} districts={currentDistricts} onChange={(area) => setEditForm((currentForm) => ({ ...currentForm, ...area }))} />
                 <div className="md:col-span-2">
-                  <TextAreaField label="家庭背景" value={editForm.familyBackground ?? ""} maxLength={500} onChange={(familyBackground) => setEditForm((currentForm) => ({ ...currentForm, familyBackground }))} />
-                </div>
-                <TextField label="来源" value={editForm.source ?? ""} onChange={(source) => setEditForm((currentForm) => ({ ...currentForm, source }))} />
-                <div className="md:col-span-2">
                   <TextAreaField label="自我介绍" value={editForm.selfDescription ?? ""} maxLength={500} onChange={(selfDescription) => setEditForm((currentForm) => ({ ...currentForm, selfDescription }))} />
-                </div>
-                <div className="md:col-span-2">
-                  <TextAreaField label="择偶偏好" value={editForm.matePreference ?? ""} maxLength={500} onChange={(matePreference) => setEditForm((currentForm) => ({ ...currentForm, matePreference }))} />
                 </div>
                 {editError ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 md:col-span-2">{editError}</div> : null}
                 <div className="flex justify-end gap-2 md:col-span-2">
@@ -1338,7 +1300,6 @@ function CreateMemberDialog({
               {ownersError ? <p className="mt-1 text-xs text-red-600">归属员工加载失败：{ownersError}</p> : null}
               {!ownersLoading && !ownersError && owners.length === 0 ? <p className="mt-1 text-xs text-amber-700">当前门店暂无可归属员工，暂不能保存会员。</p> : null}
             </div>
-            <TextField label="来源" value={form.source ?? ""} minLength={2} maxLength={40} hint="选填，2 至 40 个可见字符" error={errors.source} onChange={(source) => onChange({ ...form, source })} />
             <SelectField label="学历" value={form.education ?? ""} options={[{ value: "", label: "请选择" }, ...educationOptions.map((value) => ({ value, label: value }))]} onChange={(education) => onChange({ ...form, education: education || undefined })} />
             <TextField
               label="身高 cm"
@@ -1367,16 +1328,8 @@ function CreateMemberDialog({
             <SelectField label="收入范围" value={form.incomeRange ?? ""} options={[{ value: "", label: "请选择" }, ...incomeRangeOptions.map((value) => ({ value, label: value }))]} onChange={(incomeRange) => onChange({ ...form, incomeRange: incomeRange || undefined })} />
             <TextField label="住房情况" value={form.housingStatus ?? ""} maxLength={40} onChange={(housingStatus) => onChange({ ...form, housingStatus })} />
             <TextField label="车辆情况" value={form.vehicleStatus ?? ""} maxLength={40} onChange={(vehicleStatus) => onChange({ ...form, vehicleStatus })} />
-            <SelectField label="籍贯" value={form.hometown ?? ""} options={[{ value: "", label: "请选择省/市" }, ...cityOptions.map((value) => ({ value, label: value }))]} onChange={(hometown) => onChange({ ...form, hometown: hometown || undefined })} />
-            <SelectField label="当前城市" value={form.currentCity ?? ""} options={[{ value: "", label: "请选择省/市" }, ...cityOptions.map((value) => ({ value, label: value }))]} onChange={(currentCity) => onChange({ ...form, currentCity: currentCity || undefined })} />
-            <div className="sm:col-span-2">
-              <TextAreaField label="家庭背景" value={form.familyBackground ?? ""} maxLength={500} onChange={(familyBackground) => onChange({ ...form, familyBackground })} />
-            </div>
             <div className="sm:col-span-2">
               <TextAreaField label="自我介绍" value={form.selfDescription ?? ""} maxLength={500} onChange={(selfDescription) => onChange({ ...form, selfDescription })} />
-            </div>
-            <div className="sm:col-span-2">
-              <TextAreaField label="择偶偏好" value={form.matePreference ?? ""} maxLength={500} onChange={(matePreference) => onChange({ ...form, matePreference })} />
             </div>
           </div>
           {submitError ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{submitError}</div> : null}
@@ -1707,15 +1660,12 @@ function memberToEditForm(member: MemberDetail | MemberListItem): EditMemberInpu
     birthDate: member.birthDate ?? undefined,
     storeId: member.storeId,
     ownerEmployeeId: member.ownerEmployeeId,
-    source: member.source ?? "",
     education: profile.education ?? "",
     heightCm: profile.heightCm ?? undefined,
     weightKg: profile.weightKg ?? undefined,
     maritalStatus: profile.maritalStatus ?? "",
     occupation: profile.occupation ?? "",
     incomeRange: profile.incomeRange ?? "",
-    hometown: profile.hometown ?? "",
-    currentCity: profile.currentCity ?? "",
     hometownProvince: profile.hometownProvince ?? "",
     hometownCity: profile.hometownCity ?? "",
     hometownDistrict: profile.hometownDistrict ?? "",
@@ -1723,9 +1673,7 @@ function memberToEditForm(member: MemberDetail | MemberListItem): EditMemberInpu
     currentDistrict: profile.currentDistrict ?? "",
     housingStatus: profile.housingStatus ?? "",
     vehicleStatus: profile.vehicleStatus ?? "",
-    familyBackground: profile.familyBackground ?? "",
     selfDescription: profile.selfDescription ?? "",
-    matePreference: profile.matePreference ?? "",
     status: member.status,
   };
 }
@@ -1748,10 +1696,6 @@ function validateMemberForm(form: CreateMemberInput): MemberFormErrors {
 
   if (form.birthDate && !isEligibleBirthDate(form.birthDate)) {
     errors.birthDate = "年龄须在 18 至 80 周岁之间。";
-  }
-
-  if (form.source && (form.source.trim().length < 2 || form.source.trim().length > 40 || !visibleTextPattern.test(form.source.trim()))) {
-    errors.source = "来源须为 2 至 40 个可见字符。";
   }
 
   if (form.heightCm !== undefined && (!Number.isInteger(form.heightCm) || form.heightCm < 120 || form.heightCm > 230)) {

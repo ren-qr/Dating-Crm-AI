@@ -47,7 +47,6 @@ export type MemberListItem = {
   /** Present only for the member's assigned consultant. */
   idCard?: string | null;
   canEditIdentity?: boolean;
-  emailMasked?: string | null;
   gender?: Gender;
   birthDate?: string | null;
   status: MemberStatus | string;
@@ -56,7 +55,6 @@ export type MemberListItem = {
   storeName?: string;
   ownerName?: string;
   consultantName?: string;
-  source?: string | null;
   profileCompletenessPercent?: number;
   education?: string | null;
   heightCm?: number | null;
@@ -73,9 +71,7 @@ export type MemberListItem = {
   currentDistrict?: string | null;
   housingStatus?: string | null;
   vehicleStatus?: string | null;
-  familyBackground?: string | null;
   selfDescription?: string | null;
-  matePreference?: string | null;
   planName?: string;
   lastAction?: string;
   nextAction?: string;
@@ -101,11 +97,9 @@ export type MemberListQuery = {
 export type CreateMemberInput = {
   name: string;
   phone?: string;
-  email?: string;
   gender: Gender;
   storeId?: string;
   ownerEmployeeId?: string;
-  source?: string;
   birthDate?: string;
   education?: string;
   heightCm?: number;
@@ -113,18 +107,15 @@ export type CreateMemberInput = {
   maritalStatus?: string;
   occupation?: string;
   incomeRange?: string;
-  hometown?: string;
-  currentCity?: string;
   hometownProvince?: string;
   hometownCity?: string;
   hometownDistrict?: string;
   currentProvince?: string;
+  currentCity?: string;
   currentDistrict?: string;
   housingStatus?: string;
   vehicleStatus?: string;
-  familyBackground?: string;
   selfDescription?: string;
-  matePreference?: string;
 };
 
 export type UpdateMemberInput = Partial<CreateMemberInput> & {
@@ -152,10 +143,8 @@ export type MemberProfile = {
   currentDistrict?: string | null;
   housingStatus?: string | null;
   vehicleStatus?: string | null;
-  familyBackground?: string | null;
+  hobbies?: string | null;
   selfDescription?: string | null;
-  matePreference?: string | null;
-  expectationSummary?: string | null;
 };
 
 /** Normalizes legacy nested profile DTOs and the merged flat Member DTO. */
@@ -180,9 +169,8 @@ export function getMemberProfileFields(member: MemberDetail | MemberListItem): M
     currentDistrict: member.currentDistrict ?? legacyProfile.currentDistrict,
     housingStatus: member.housingStatus ?? legacyProfile.housingStatus,
     vehicleStatus: member.vehicleStatus ?? legacyProfile.vehicleStatus,
-    familyBackground: member.familyBackground ?? legacyProfile.familyBackground,
+    hobbies: "profile" in member ? legacyProfile.hobbies : undefined,
     selfDescription: member.selfDescription ?? legacyProfile.selfDescription,
-    matePreference: typeof member.matePreference === "string" ? member.matePreference : legacyProfile.matePreference,
   };
 }
 

@@ -11,7 +11,6 @@ type MemberListItem = {
   status: string;
   storeId: string;
   ownerEmployeeId: string;
-  source: string | null;
   profileCompletenessPercent: number;
   createdAt: string;
   updatedAt: string;
@@ -26,7 +25,6 @@ const memberFixture: MemberListItem = {
   status: "ACTIVE",
   storeId: "store_jingan",
   ownerEmployeeId: "emp_consultant_1",
-  source: "walk-in",
   profileCompletenessPercent: 72,
   createdAt: "2026-07-11T01:00:00.000Z",
   updatedAt: "2026-07-11T02:00:00.000Z",

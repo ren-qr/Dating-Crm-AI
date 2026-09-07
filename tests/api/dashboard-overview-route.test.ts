@@ -77,16 +77,16 @@ describe("GET /api/v1/dashboard/overview", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.memberCount).toHaveBeenNthCalledWith(1, { where: { storeId: "store_1" } });
+    expect(mocks.memberCount).toHaveBeenNthCalledWith(1, { where: { storeId: "store_1", ownerEmployeeId: "emp_1" } });
     expect(mocks.followUpCount).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ storeId: "store_1", nextAt: expect.any(Object) }),
+      where: expect.objectContaining({ storeId: "store_1", employeeId: "emp_1", nextAt: expect.any(Object) }),
     }));
     expect(mocks.blacklistCount).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ storeId: "store_1", status: "ACTIVE" }),
     }));
     expect(mocks.auditFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { storeId: "store_1" },
-      select: expect.objectContaining({ actorEmployee: { select: { name: true } } }),
+      include: expect.objectContaining({ actorEmployee: { select: { name: true } } }),
       take: 8,
     }));
     expect(body.data).toEqual({

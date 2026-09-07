@@ -139,9 +139,22 @@ export async function requireMemberEditScope(
   context: AuthContext,
   member: MemberEditTarget,
 ): Promise<Response | null> {
-  void request;
-  void context;
-  void member;
+  if (context.isBootstrapAdmin) {
+    return null;
+  }
+
+  if (
+    context.employee.storeId !== member.storeId ||
+    context.employee.employeeId !== member.ownerEmployeeId
+  ) {
+    return apiResponse(request, {
+      code: ApiCode.FORBIDDEN,
+      message: "无权修改该会员",
+      data: null,
+      status: 403,
+    });
+  }
+
   return null;
 }
 
