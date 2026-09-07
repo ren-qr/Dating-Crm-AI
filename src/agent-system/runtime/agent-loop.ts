@@ -141,6 +141,23 @@ export class AgentLoop {
       return withClarificationAnswer(pending.request, pending.field, input.clarificationAnswer.trim());
     }
 
+    const requestedItem = requestedResultItem(input.message);
+    if (requestedItem !== null && requestedItem > 50) {
+      return {
+        result: {
+          status: "ClarificationRequired",
+          text: "当前结果中没有这一位会员。",
+          extra: {
+            clarification: {
+              field: "memberRef",
+              reason: "result_index_out_of_range",
+              question: "当前结果中没有这一位会员。",
+              options: [],
+            },
+          },
+        },
+      };
+    }
     const localRequest = directProfileRequest(input.message, state);
     const privacy = scanModelText(input.message);
     if (context.trustZone === "cloud" && !privacy.safe && !localRequest) {
@@ -178,17 +195,38 @@ function withClarificationAnswer(request: CapabilityRequest, field: string, answ
 }
 function isClearCommand(message: string) { return /^(清空条件|清除筛选|清空筛选)$/u.test(message.trim()); }
 function safeEventInput(message: string, context: RuntimeContext) {
-  return context.trustZone === "cloud" && directProfileRequest(message) ? "[服务器解析的会员定位请求]" : message;
+  if (context.trustZone !== "cloud") return message;
+  try {
+    return directProfileRequest(message) ? "[服务器解析的会员定位请求]" : message;
+  } catch {
+    // Invalid local references are handled by the Runtime/Gateway path. Logging
+    // must never turn a recoverable clarification into a failed turn.
+    return message;
+  }
 }
 function directProfileRequest(message: string, state?: LoadedState): CapabilityRequest | null {
   const memberNo = /(?:会员编号|编号)\s*[:：]?\s*([A-Za-z0-9_-]{2,80})/u.exec(message)?.[1];
   if (memberNo) return capabilityRequestSchema.parse({ capability: "get_member_profile", args: { memberNo: { kind: "exact", value: memberNo } } });
-  const name = /(?:查一下|查看|打开|看看)\s*([\u4E00-\u9FFF]{2,8})(?:的?(?:资料|详情|情况))?$/u.exec(message.trim())?.[1];
+  const trimmed = message.trim();
+  const name =
+    /(?:查一下|查看|打开|看看)\s*([\u4E00-\u9FFF]{2,8}?)(?:的?(?:资料|详情|情况))$/u.exec(trimmed)?.[1] ??
+    /(?:查一下|查看|打开|看看)\s*([\u4E00-\u9FFF]{2,8})$/u.exec(trimmed)?.[1];
   if (name) return capabilityRequestSchema.parse({ capability: "get_member_profile", args: { memberName: { kind: "exact", value: name } } });
-  const item = /第\s*([1-9]\d?)\s*(?:个|位)?(?:看看|查看|详情|资料|详细情况)?/u.exec(message)?.[1];
-  if (item) return capabilityRequestSchema.parse({ capability: "get_member_profile", args: { memberRef: { kind: "reference", ref: "result_item", value: Number(item) } } });
+  const itemNumber = requestedResultItem(message);
+  if (itemNumber) return capabilityRequestSchema.parse({ capability: "get_member_profile", args: { memberRef: { kind: "reference", ref: "result_item", value: itemNumber } } });
   if (/(?:她|他|刚才那个|这个)(?:的)?(?:资料|详情|详细情况)/u.test(message) && state?.working.selectedMemberId) {
     return capabilityRequestSchema.parse({ capability: "get_member_profile", args: { memberRef: { kind: "reference", ref: "selected_member" } } });
   }
   return null;
+}
+
+function requestedResultItem(message: string) {
+  const item = /第\s*([1-9]\d?|[一二三四五六七八九十])\s*(?:个|位)?(?:看看|查看|详情|资料|详细情况)?/u.exec(message)?.[1];
+  return item ? parseResultItemNumber(item) : null;
+}
+
+function parseResultItemNumber(value: string) {
+  if (/^\d+$/u.test(value)) return Number(value);
+  const chinese: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+  return chinese[value] ?? null;
 }

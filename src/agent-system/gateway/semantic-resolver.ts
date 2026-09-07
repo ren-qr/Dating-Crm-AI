@@ -43,7 +43,10 @@ export async function resolveSearchSemantics(
         args.ageMax = age;
         continue;
       }
-      const operation = argument.kind === "semantic" ? argument.operator ?? argument.concept : argument.operator;
+      // `operator` is the Manager's canonical protocol value. `concept` preserves
+      // the user's words for tracing only; treating it as an operator lets model
+      // prose silently become executable semantics.
+      const operation = argument.operator;
       if (operation === "around" && age !== null) {
         args.ageMin = Math.max(AGE_MIN, age - AROUND_TOLERANCE);
         args.ageMax = Math.min(AGE_MAX, age + AROUND_TOLERANCE);

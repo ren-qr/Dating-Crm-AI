@@ -34,7 +34,7 @@ const mockManager: Manager = {
       args.ageMax = { kind: "exact", value: Number(range[2]) };
     }
     const around = /(\d{2})\s*岁?左右/u.exec(text);
-    if (around) args.age = { kind: "semantic", concept: "around", value: Number(around[1]) };
+    if (around) args.age = { kind: "semantic", operator: "around", concept: "around", value: Number(around[1]) };
     const occupation = /(?:职业|做|从事)\s*([\u4E00-\u9FFF]{2,12})/u.exec(text)?.[1];
     if (occupation) args.occupation = { kind: "exact", value: occupation };
     const city = /(上海|北京|广州|深圳|杭州|成都|武汉|南京|苏州)/u.exec(text)?.[1];

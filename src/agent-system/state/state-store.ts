@@ -7,8 +7,18 @@ export type LoadedState = { log: SessionLog; working: WorkingState; tasks: TaskS
 export interface StateStore {
   withState<T>(context: RuntimeContext, run: (state: LoadedState) => Promise<T>): Promise<T>;
 }
-export class StateAccessError extends Error {}
-export class StateBusyError extends Error {}
+export class StateAccessError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StateAccessError";
+  }
+}
+export class StateBusyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StateBusyError";
+  }
+}
 
 // Development store: isolated by authenticated subject, serialized per session.
 export class MemoryStateStore implements StateStore {
