@@ -182,6 +182,9 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
 
   const canRead = employee === undefined || canUse("member:read", employee);
   const canWrite = employee === undefined || canUse("member:write", employee);
+  const canEditProfile = employee === undefined || (
+    canUse("member:write", employee) && canUse("profile:write", employee)
+  );
   const canFollowup = employee === undefined || canUse("followup:write", employee);
   const canBlacklist = employee === undefined || canUse("blacklist:write", employee);
   const canDelete = employee === undefined || canUse("member:delete", employee);
@@ -374,12 +377,37 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
     }
   }
 
+  if (selectedMember) {
+    return (
+      <MemberDetailDrawer
+        canBlacklist={canBlacklist}
+        canDelete={canDelete && canEditMember(employee, selectedMember)}
+        canEdit={canEditProfile}
+        canFollowup={canFollowup}
+        member={selectedMember}
+        onClose={() => setSelectedMember(null)}
+        onFollowupCreated={() => setQuery((current) => ({ ...current }))}
+        onMemberUpdated={(updated) => {
+          setMembers((current) => current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)));
+          setSelectedMember((current) => (current?.id === updated.id ? { ...current, ...updated } : current));
+        }}
+        onMemberDeleted={(deletedId) => {
+          setMembers((current) => current.filter((item) => item.id !== deletedId));
+          setSelectedMember(null);
+          setTotal((current) => Math.max(0, current - 1));
+        }}
+        ownerOptions={ownerOptions}
+        storeOptions={storeOptions}
+      />
+    );
+  }
+
   return (
-    <div className="relative min-h-[calc(100vh-7rem)] rounded-md border border-zinc-200 bg-white">
-      <div className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="relative min-h-[calc(100vh-7rem)] overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-zinc-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-sm font-semibold">会员运营工作台</h2>
-          <p className="mt-0.5 text-xs text-zinc-500">高频筛选、档案详情、跟进与风控审计联动</p>
+          <h2 className="text-base font-semibold text-zinc-900">会员运营工作台</h2>
+          <p className="mt-1 text-xs text-zinc-500">筛选、查看档案与跟进记录集中处理</p>
         </div>
         <div className="flex items-center gap-2">
           <details className="relative">
@@ -415,21 +443,21 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
         </div>
       </div>
 
-      <form className="border-b border-zinc-200 bg-zinc-50 px-4 py-3" onSubmit={runSearch}>
-        <div className="mt-2 flex min-h-5 flex-wrap items-center gap-1 text-xs text-zinc-500">
-          {activeFilters.length > 0 ? activeFilters.map((filter) => <span key={filter} className="rounded bg-white px-2 py-1">{filter}</span>) : "未设置筛选条件"}
-          <button className="ml-auto h-7 rounded-md border border-zinc-300 bg-white px-2 font-medium text-zinc-700 hover:bg-zinc-100" type="button" onClick={resetSearch}>
+      <form className="border-b border-zinc-200 bg-zinc-50/70 px-5 py-3" onSubmit={runSearch}>
+        <div className="flex min-h-6 flex-wrap items-center gap-2 text-xs text-zinc-500">
+          {activeFilters.length > 0 ? activeFilters.map((filter) => <span key={filter} className="rounded border border-zinc-200 bg-white px-2 py-1 text-zinc-600">{filter}</span>) : <span>未设置筛选条件</span>}
+          <button className="ml-auto h-7 rounded-md border border-zinc-300 bg-white px-2.5 font-medium text-zinc-700 hover:bg-zinc-100" type="button" onClick={resetSearch}>
             重置筛选
           </button>
         </div>
       </form>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full table-fixed border-collapse text-left text-[11px]" style={{ width: `${Math.max(920, orderedVisibleColumns.length * 96 + 88)}px` }}>
+        <table className="w-full table-fixed border-collapse text-left text-xs" style={{ minWidth: `${Math.max(960, orderedVisibleColumns.length * 135 + 108)}px` }}>
           <thead className="bg-zinc-50 text-zinc-500">
             <tr>
               {orderedVisibleColumns.map((column) => (
-                <th key={column.key} className="border-b border-zinc-200 px-2 py-2 align-top font-medium">
+                <th key={column.key} className="border-b border-zinc-200 px-3 py-3 align-top font-medium">
                   <button className={column.sortable ? "font-medium text-zinc-700 hover:text-zinc-950" : "cursor-default font-medium"} type="button" onClick={() => sortByColumn(column)}>
                     {column.label}{draftQuery.sortBy === column.sortable ? (draftQuery.sortOrder === "desc" ? " ↓" : " ↑") : ""}
                   </button>
@@ -442,7 +470,7 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
                   />
                 </th>
               ))}
-              <th className="w-20 border-b border-zinc-200 px-2 py-2 align-top font-medium">详情</th>
+              <th className="w-[108px] border-b border-zinc-200 px-3 py-3 text-center align-top font-medium">详情</th>
             </tr>
           </thead>
           <tbody>
@@ -456,7 +484,6 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
               members.map((member) => (
                 <MemberRow
                   key={member.id}
-                  canEdit={canWrite && canEditMember(employee, member)}
                   member={member}
                   storeOptions={storeOptions}
                   visibleColumns={orderedVisibleColumns.map((column) => column.key)}
@@ -468,7 +495,7 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
         </table>
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-zinc-200 px-4 py-3 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 border-t border-zinc-200 bg-zinc-50/50 px-5 py-3 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
         <span>
           第 {query.page} 页 · 共 {total} 条 · 每页 {query.pageSize} 条
         </span>
@@ -515,40 +542,16 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
         />
       ) : null}
 
-      {selectedMember ? (
-        <MemberDetailDrawer
-          canBlacklist={canBlacklist}
-          canDelete={canDelete && canEditMember(employee, selectedMember)}
-          canEdit={canWrite && canEditMember(employee, selectedMember)}
-          canFollowup={canFollowup}
-          member={selectedMember}
-          onClose={() => setSelectedMember(null)}
-          onFollowupCreated={() => setQuery((current) => ({ ...current }))}
-          onMemberUpdated={(updated) => {
-            setMembers((current) => current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)));
-            setSelectedMember((current) => (current?.id === updated.id ? { ...current, ...updated } : current));
-          }}
-          onMemberDeleted={(deletedId) => {
-            setMembers((current) => current.filter((item) => item.id !== deletedId));
-            setSelectedMember(null);
-            setTotal((current) => Math.max(0, current - 1));
-          }}
-          ownerOptions={ownerOptions}
-          storeOptions={storeOptions}
-        />
-      ) : null}
     </div>
   );
 }
 
 function MemberRow({
-  canEdit,
   member,
   storeOptions,
   visibleColumns,
   onOpen,
 }: {
-  canEdit: boolean;
   member: MemberListItem;
   storeOptions: { value: string; label: string }[];
   visibleColumns: ColumnKey[];
@@ -557,21 +560,19 @@ function MemberRow({
   const completeness = member.profileCompletenessPercent ?? 0;
 
   return (
-    <tr className="hover:bg-zinc-50">
+    <tr className="transition-colors hover:bg-emerald-50/45">
       {visibleColumns.map((column) => (
-        <td key={column} className="max-w-28 truncate whitespace-nowrap border-b border-zinc-100 px-2 py-2 text-zinc-700" title={memberCellTitle(member, column, storeOptions)}>
+        <td key={column} className="max-w-[240px] truncate whitespace-nowrap border-b border-zinc-100 px-3 py-4 text-[13px] text-zinc-700" title={memberCellTitle(member, column, storeOptions)}>
           {renderMemberCell(member, column, storeOptions, completeness)}
         </td>
       ))}
-      <td className="border-b border-zinc-100 px-2 py-2">
+      <td className="border-b border-zinc-100 px-3 py-4 text-center">
         <button
-          className={canEdit
-            ? "h-7 rounded-md border border-emerald-200 bg-emerald-50 px-2 font-medium text-emerald-700 hover:bg-emerald-100"
-            : "h-7 rounded-md border border-zinc-300 px-2 font-medium text-zinc-500 hover:bg-zinc-50"}
+          className="h-8 whitespace-nowrap rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 shadow-sm hover:border-zinc-400 hover:bg-zinc-50"
           type="button"
           onClick={onOpen}
         >
-          {canEdit ? "编辑" : "查看"}
+          查看详情
         </button>
       </td>
     </tr>
@@ -710,6 +711,8 @@ function MemberDetailDrawer({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [activeDetailTab, setActiveDetailTab] = useState("personal");
   const [editingPreference, setEditingPreference] = useState(false);
+  const [savingPreference, setSavingPreference] = useState(false);
+  const [preferenceError, setPreferenceError] = useState<string | null>(null);
   const [preferenceForm, setPreferenceForm] = useState({ ageMin: "", ageMax: "", genderPreference: "OPPOSITE", educationRequirement: "", incomeMinAnnual: "", heightMinCm: "", heightMaxCm: "", maritalStatusRequirements: "未婚", hasHousing: "", hasVehicle: "", smokingPreference: "不限", drinkingPreference: "不限" });
   const [provinces, setProvinces] = useState<AreaOption[]>([]);
   const [hometownCities, setHometownCities] = useState<AreaOption[]>([]);
@@ -843,6 +846,37 @@ function MemberDetailDrawer({
     }
   }
 
+  async function submitPreferenceEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingPreference(true);
+    setPreferenceError(null);
+
+    try {
+      const updated = await updateMember(member.id, {
+        ageMin: preferenceForm.ageMin ? Number(preferenceForm.ageMin) : null,
+        ageMax: preferenceForm.ageMax ? Number(preferenceForm.ageMax) : null,
+        genderPreference: preferenceForm.genderPreference,
+        educationRequirement: preferenceForm.educationRequirement || null,
+        incomeMinAnnual: preferenceForm.incomeMinAnnual ? Number(preferenceForm.incomeMinAnnual) : null,
+        heightMinCm: preferenceForm.heightMinCm ? Number(preferenceForm.heightMinCm) : null,
+        heightMaxCm: preferenceForm.heightMaxCm ? Number(preferenceForm.heightMaxCm) : null,
+        maritalStatusRequirements: preferenceForm.maritalStatusRequirements.split(",").map((value) => value.trim()).filter(Boolean),
+        hasHousing: preferenceForm.hasHousing === "" ? null : preferenceForm.hasHousing === "true",
+        hasVehicle: preferenceForm.hasVehicle === "" ? null : preferenceForm.hasVehicle === "true",
+        smokingPreference: preferenceForm.smokingPreference || null,
+        drinkingPreference: preferenceForm.drinkingPreference || null,
+      });
+      const nextDetail = { ...updated, blacklistEntries, auditLogs, followups };
+      setDetail(nextDetail);
+      setEditingPreference(false);
+      onMemberUpdated(nextDetail);
+    } catch (updateError) {
+      setPreferenceError(formatError(updateError));
+    } finally {
+      setSavingPreference(false);
+    }
+  }
+
   async function removeMember() {
     if (!window.confirm(`确认删除会员「${current.name}」？删除后不可恢复。`)) {
       return;
@@ -867,8 +901,8 @@ function MemberDetailDrawer({
   const auditLogs = detail?.auditLogs ?? [];
 
   return (
-    <div className="absolute inset-0 z-10 flex bg-white">
-      <aside className="flex h-full w-full flex-col bg-white">
+    <section className="min-h-[calc(100vh-7rem)] overflow-hidden rounded-md border border-zinc-200 bg-white">
+      <div className="flex min-h-[calc(100vh-7rem)] flex-col bg-white">
         <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-4 py-4 sm:px-5">
           <div>
             <h3 className="break-words text-base font-semibold">{current.name} · 会员详情</h3>
@@ -901,7 +935,7 @@ function MemberDetailDrawer({
               ["personal", "个人资料"],
               ["preference", "择偶要求"],
               ["description", "个人描述"],
-              ["more", "更多"],
+              ["records", "业务记录"],
             ].map(([value, label]) => (
               <button
                 key={value}
@@ -939,13 +973,16 @@ function MemberDetailDrawer({
             </Panel>
           ) : null}
           {activeDetailTab === "preference" ? (
-            <Panel title="择偶要求" action={<button type="button" className="h-8 rounded-md border border-zinc-300 px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50" onClick={() => setEditingPreference((value) => !value)}>{editingPreference ? "取消编辑" : "编辑资料"}</button>}>
-              {editingPreference ? <form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={async (event) => { event.preventDefault(); const updated = await updateMember(member.id, { ageMin: preferenceForm.ageMin ? Number(preferenceForm.ageMin) : null, ageMax: preferenceForm.ageMax ? Number(preferenceForm.ageMax) : null, genderPreference: preferenceForm.genderPreference, educationRequirement: preferenceForm.educationRequirement || null, incomeMinAnnual: preferenceForm.incomeMinAnnual ? Number(preferenceForm.incomeMinAnnual) : null, heightMinCm: preferenceForm.heightMinCm ? Number(preferenceForm.heightMinCm) : null, heightMaxCm: preferenceForm.heightMaxCm ? Number(preferenceForm.heightMaxCm) : null, maritalStatusRequirements: preferenceForm.maritalStatusRequirements.split(",").map((value) => value.trim()).filter(Boolean), hasHousing: preferenceForm.hasHousing === "" ? null : preferenceForm.hasHousing === "true", hasVehicle: preferenceForm.hasVehicle === "" ? null : preferenceForm.hasVehicle === "true", smokingPreference: preferenceForm.smokingPreference || null, drinkingPreference: preferenceForm.drinkingPreference || null }); setDetail((value) => ({ ...(value ?? member), ...updated })); setEditingPreference(false); }}>
+            <Panel title="择偶要求" action={<button type="button" className="h-8 rounded-md border border-zinc-300 px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canEdit} onClick={() => { setPreferenceError(null); setEditingPreference((value) => !value); }}>{editingPreference ? "取消编辑" : "编辑资料"}</button>}>
+              {!canEdit && !editingPreference ? <InfoBox tone="warn" text="当前账号没有编辑会员资料的权限。" /> : null}
+              {editingPreference ? <form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={submitPreferenceEdit}>
                 <TextField label="最小年龄" value={preferenceForm.ageMin} type="number" onChange={(ageMin) => setPreferenceForm((value) => ({ ...value, ageMin }))} /><TextField label="最大年龄" value={preferenceForm.ageMax} type="number" onChange={(ageMax) => setPreferenceForm((value) => ({ ...value, ageMax }))} />
                 <SelectField label="性别要求" value={preferenceForm.genderPreference} options={[{ value: "OPPOSITE", label: "异性" }, { value: "MALE", label: "男性" }, { value: "FEMALE", label: "女性" }, { value: "ANY", label: "不限" }]} onChange={(genderPreference) => setPreferenceForm((value) => ({ ...value, genderPreference }))} /><TextField label="学历要求" value={preferenceForm.educationRequirement} onChange={(educationRequirement) => setPreferenceForm((value) => ({ ...value, educationRequirement }))} />
                 <TextField label="最低年收入（元）" value={preferenceForm.incomeMinAnnual} type="number" onChange={(incomeMinAnnual) => setPreferenceForm((value) => ({ ...value, incomeMinAnnual }))} /><TextField label="最低身高 cm" value={preferenceForm.heightMinCm} type="number" onChange={(heightMinCm) => setPreferenceForm((value) => ({ ...value, heightMinCm }))} /><TextField label="最高身高 cm" value={preferenceForm.heightMaxCm} type="number" onChange={(heightMaxCm) => setPreferenceForm((value) => ({ ...value, heightMaxCm }))} /><TextField label="婚姻状况（逗号分隔）" value={preferenceForm.maritalStatusRequirements} onChange={(maritalStatusRequirements) => setPreferenceForm((value) => ({ ...value, maritalStatusRequirements }))} />
                 <SelectField label="住房要求" value={preferenceForm.hasHousing} options={[{ value: "", label: "不限" }, { value: "true", label: "需要有房" }, { value: "false", label: "无特殊要求" }]} onChange={(hasHousing) => setPreferenceForm((value) => ({ ...value, hasHousing }))} /><SelectField label="车辆要求" value={preferenceForm.hasVehicle} options={[{ value: "", label: "不限" }, { value: "true", label: "需要有车" }, { value: "false", label: "无特殊要求" }]} onChange={(hasVehicle) => setPreferenceForm((value) => ({ ...value, hasVehicle }))} />
-                <TextField label="吸烟要求" value={preferenceForm.smokingPreference} onChange={(smokingPreference) => setPreferenceForm((value) => ({ ...value, smokingPreference }))} /><TextField label="饮酒要求" value={preferenceForm.drinkingPreference} onChange={(drinkingPreference) => setPreferenceForm((value) => ({ ...value, drinkingPreference }))} /><div className="flex justify-end md:col-span-2"><button className="h-8 rounded-md bg-zinc-950 px-3 text-xs font-medium text-white" type="submit">保存修改</button></div>
+                <TextField label="吸烟要求" value={preferenceForm.smokingPreference} onChange={(smokingPreference) => setPreferenceForm((value) => ({ ...value, smokingPreference }))} /><TextField label="饮酒要求" value={preferenceForm.drinkingPreference} onChange={(drinkingPreference) => setPreferenceForm((value) => ({ ...value, drinkingPreference }))} />
+                {preferenceError ? <div className="md:col-span-2"><InfoBox tone="warn" text={preferenceError} /></div> : null}
+                <div className="flex justify-end md:col-span-2"><button className="h-8 rounded-md bg-zinc-950 px-3 text-xs font-medium text-white disabled:opacity-50" type="submit" disabled={savingPreference}>{savingPreference ? "保存中" : "保存修改"}</button></div>
               </form> : null}
               {!editingPreference && current.matePreferenceDetails ? <>
                 <KeyValue label="年龄范围" value={`${current.matePreferenceDetails.ageMin ?? "不限"} - ${current.matePreferenceDetails.ageMax ?? "不限"} 岁`} />
@@ -970,18 +1007,29 @@ function MemberDetailDrawer({
                 </div>
                 <div>
                   <div className="mb-1 font-medium text-zinc-500">兴趣爱好</div>
-                  <p className="whitespace-pre-wrap leading-6 text-zinc-800">{("hobbies" in current && typeof current.hobbies === "string" ? current.hobbies : null) ?? "暂未填写"}</p>
+                  <p className="whitespace-pre-wrap leading-6 text-zinc-800">{profile.hobbies ?? "暂未填写"}</p>
                 </div>
               </div>
             </Panel>
           ) : null}
-          {activeDetailTab === "more" ? (
-            <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {["敏感信息", "认证资料", "跟进记录", "匹配记录", "操作审计"].map((item) => (
-                <button key={item} type="button" className="flex items-center justify-between border border-zinc-200 bg-white px-4 py-3 text-left font-medium text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50">
-                  <span>{item}</span><span className="text-zinc-400">暂未开放</span>
-                </button>
-              ))}
+          {activeDetailTab === "records" ? (
+            <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <Panel title="跟进记录">
+                {followups.length > 0 ? (
+                  <div className="space-y-3">
+                    {followups.map((item) => <div key={item.id} className="border-b border-zinc-100 pb-3 last:border-0 last:pb-0"><div className="flex items-center justify-between gap-3"><span className="font-medium text-zinc-900">{item.method ?? "跟进"}</span><span className="shrink-0 text-zinc-500">{formatDate(item.createdAt)}</span></div><p className="mt-1 text-zinc-700">{item.content || "已记录跟进"}</p>{item.nextAction || item.nextFollowUpAt ? <p className="mt-1 text-zinc-500">下一步：{item.nextAction ?? "待回访"} · {formatDate(item.nextFollowUpAt)}</p> : null}</div>)}
+                  </div>
+                ) : <InfoBox text="暂无跟进记录。" />}
+              </Panel>
+              <Panel title="认证资料">
+                {(detail?.documents ?? []).length > 0 ? <div className="space-y-2">{detail?.documents?.map((document) => <KeyValue key={document.id} label={document.type} value={`${document.status ?? "待审"} · ${formatDate(document.createdAt)}`} />)}</div> : <InfoBox text="暂无认证资料记录。" />}
+              </Panel>
+              <Panel title="黑名单记录">
+                {blacklistEntries.length > 0 ? <div className="space-y-2">{blacklistEntries.map((entry) => <KeyValue key={entry.id} label={entry.riskType ?? entry.status} value={entry.reason} />)}</div> : <InfoBox text="未命中黑名单记录。" />}
+              </Panel>
+              <Panel title="操作审计">
+                {auditLogs.length > 0 ? <div className="space-y-2">{auditLogs.map((log) => <KeyValue key={log.id} label={log.action} value={`${log.actorName ?? "系统"} · ${formatDate(log.createdAt)}`} />)}</div> : <InfoBox text="暂无相关操作记录。" />}
+              </Panel>
             </section>
           ) : null}
 
@@ -1182,8 +1230,8 @@ function MemberDetailDrawer({
             </>
           ) : null}
         </div>
-      </aside>
-    </div>
+      </div>
+    </section>
   );
 }
 

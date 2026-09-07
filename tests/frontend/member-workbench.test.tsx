@@ -127,7 +127,7 @@ describe("会员运营工作台 MVP", () => {
     expect(within(table).queryByText("13812346210")).not.toBeInTheDocument();
     expect(within(table).getAllByText("静安旗舰店").length).toBeGreaterThan(0);
     expect(within(table).getAllByText(/陈敏/).length).toBeGreaterThan(0);
-    expect(within(table).getByRole("button", { name: "编辑" })).toHaveClass("text-emerald-700");
+    expect(within(table).getByRole("button", { name: "查看详情" })).toHaveClass("text-zinc-700");
   });
 
   it("keeps table cells aligned with headers after repeatedly hiding and showing columns", async () => {
@@ -194,7 +194,7 @@ describe("会员运营工作台 MVP", () => {
     expect(filterInputs[2]).toHaveValue("");
   });
 
-  it("shows readable store names and editable cross-store members for managers", async () => {
+  it("shows readable store names and opens cross-store member details for managers", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -266,8 +266,8 @@ describe("会员运营工作台 MVP", () => {
     expect(await screen.findByRole("option", { name: "上海人民广场店" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "杭州西湖店" })).toBeInTheDocument();
 
-    const editButton = within(rows[1]).getByRole("button", { name: "编辑" });
-    fireEvent.click(editButton);
+    const detailButton = within(rows[1]).getByRole("button", { name: "查看详情" });
+    fireEvent.click(detailButton);
     expect(await screen.findByRole("heading", { name: "周明轩 · 会员详情" })).toBeInTheDocument();
     expect(screen.getAllByText("个人资料").length).toBeGreaterThan(0);
     expect(screen.getAllByText("择偶要求").length).toBeGreaterThan(0);
@@ -660,12 +660,19 @@ describe("会员运营工作台 MVP", () => {
 
     render(<MemberWorkbench />);
 
-    fireEvent.click((await screen.findAllByRole("button", { name: "编辑" }))[0]);
+    fireEvent.click((await screen.findAllByRole("button", { name: "查看详情" }))[0]);
 
     expect(await screen.findByRole("heading", { name: "林晓雨 · 会员详情" })).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(screen.getAllByText("MSTORE1001").length).toBeGreaterThan(0);
     expect(screen.getAllByText("个人资料").length).toBeGreaterThan(0);
     expect(screen.getAllByText("择偶要求").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "业务记录" }));
+    expect(await screen.findByText("跟进记录")).toBeInTheDocument();
+    expect(screen.getByText("已完成首次回访")).toBeInTheDocument();
+    expect(screen.getByText("黑名单记录")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "个人资料" }));
 
     fireEvent.click(screen.getByRole("button", { name: "编辑资料" }));
     fireEvent.change(screen.getByRole("textbox", { name: "姓名" }), { target: { value: "林小雨" } });
@@ -755,7 +762,7 @@ describe("会员运营工作台 MVP", () => {
 
     render(<MemberWorkbench employee={{ employeeId: "emp_owner", name: "P3", roleCodes: ["admin"], permissions: ["member:read", "member:write", "member:delete"] }} />);
 
-    fireEvent.click((await screen.findAllByRole("button", { name: "编辑" }))[0]);
+    fireEvent.click((await screen.findAllByRole("button", { name: "查看详情" }))[0]);
     fireEvent.click(await screen.findByRole("button", { name: "删除会员" }));
 
     expect(confirmSpy).toHaveBeenCalledWith("确认删除会员「林晓雨」？删除后不可恢复。");
