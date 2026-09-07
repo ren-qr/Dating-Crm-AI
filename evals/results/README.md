@@ -5,4 +5,5 @@
 Generated reports are intentionally ignored because they contain run timestamps.
 
 `phase1-deterministic.example.json` and `.md` are the checked-in result from the
-current deterministic run: 60 scenarios, 71 turns, and no failures.
+current deterministic run: 60 scenarios, 72 turns, and no failures. The executable
+suite also runs direct T37-T42 action and model-context security boundary assertions.
