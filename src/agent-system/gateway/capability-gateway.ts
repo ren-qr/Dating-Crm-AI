@@ -93,6 +93,53 @@ export class CapabilityGateway {
     return { status: "ResolvedAction", action };
   }
 
+  /**
+   * Structured workbench calls arrive after deterministic draft resolution, so
+   * they intentionally bypass the legacy Manager argument protocol while still
+   * using the same authorization, schema, policy, and action-issuance boundary.
+   */
+  async resolveStructuredSearch(input: unknown, context: RuntimeContext): Promise<GatewayResult> {
+    const definition = this.registry.get("search_members");
+    if (!definition || !definition.enabled) {
+      return { status: "ValidationError", message: "该能力未注册或未启用。" };
+    }
+    const authorization = authorize(definition, context);
+    this.trace.record(context.traceId, "authorization", authorization?.status ?? "passed");
+    if (authorization) return authorization;
+
+    const args = definition.inputSchema.safeParse(input);
+    if (!args.success) {
+      return { status: "ValidationError", message: "查询参数类型、范围或组合无效。" };
+    }
+    for (const [stage, check] of [
+      ["risk", () => riskPolicy(definition)],
+      ["confirmation", () => confirmationPolicy(definition)],
+      ["model_trust", () => modelTrustPolicy(definition, context)],
+    ] as const) {
+      const stop = check();
+      this.trace.record(context.traceId, stage, stop?.status ?? "passed");
+      if (stop) return stop;
+    }
+
+    const action = deepFreeze({
+      capability: definition.name,
+      args: args.data,
+      requestId: context.traceId,
+      sessionId: context.sessionId,
+      operatorId: context.operatorId,
+      storeId: context.storeId!,
+      stateVersion: 0,
+      requestMode: "new_query",
+      policyVersion: "query-workbench-v1",
+    }) as ResolvedAction;
+    this.issued.set(action, context.trustZone);
+    this.trace.record(context.traceId, "resolved_structured_action", {
+      capability: action.capability,
+      argumentNames: Object.keys(action.args),
+    });
+    return { status: "ResolvedAction", action };
+  }
+
   consume(action: ResolvedAction, context: RuntimeContext) {
     if (
       this.issued.get(action) !== context.trustZone ||

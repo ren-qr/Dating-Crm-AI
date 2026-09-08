@@ -130,6 +130,61 @@ describe("会员运营工作台 MVP", () => {
     expect(within(table).getByRole("button", { name: "查看详情" })).toHaveClass("text-zinc-700");
   });
 
+  it("uses AI only to fill a visible draft and executes the user's edited structured filters", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/v1/ai/member-search-draft") {
+        return Response.json({
+          code: 0,
+          message: "success",
+          data: { draft: { age: { mode: "bounds", max: 30 }, gender: "FEMALE", currentLocation: "杭州", unresolved: [] } },
+          requestId: "quick-fill-request",
+          timestamp: "2026-09-08T00:00:00.000Z",
+        });
+      }
+      if (url === "/api/v1/members/search") {
+        return Response.json({
+          code: 0,
+          message: "success",
+          data: {
+            items: [{ id: "member-workbench", name: "杭州会员", age: 29, gender: "FEMALE", occupation: "教师", education: "本科", currentLocation: { province: "33", city: "3301", district: "330102" } }],
+            page: 1,
+            pageSize: 10,
+            total: 1,
+            hasNext: false,
+          },
+          requestId: "structured-search-request",
+          timestamp: "2026-09-08T00:00:00.000Z",
+        });
+      }
+      if (url === "/api/v1/members/owners" || url === "/api/v1/stores") {
+        return Response.json({ code: 0, message: "success", data: url.endsWith("owners") ? [] : { items: [] }, requestId: "support-request", timestamp: "2026-09-08T00:00:00.000Z" });
+      }
+      return Response.json({ code: 0, message: "success", data: { items: [], page: 1, pageSize: 20, total: 0, hasNext: false }, requestId: "members-request", timestamp: "2026-09-08T00:00:00.000Z" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    globalThis.React = React;
+    const { MemberWorkbench } = await loadWorkbench();
+    render(<MemberWorkbench />);
+
+    fireEvent.change(screen.getByLabelText("AI 快速填写"), { target: { value: "杭州30岁以下女生" } });
+    fireEvent.click(screen.getByRole("button", { name: "识别条件" }));
+    expect(await screen.findByText("现居：杭州")).toBeInTheDocument();
+    expect(screen.getByText("性别：女")).toBeInTheDocument();
+    expect(screen.getByText("30 岁以下")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("最大年龄"), { target: { value: "29" } });
+    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    expect(await screen.findByText("杭州会员")).toBeInTheDocument();
+
+    const searchCall = fetchMock.mock.calls.find(([url]) => String(url) === "/api/v1/members/search");
+    expect(searchCall).toBeTruthy();
+    expect(JSON.parse(String(searchCall?.[1]?.body))).toEqual({
+      draft: { age: { mode: "bounds", max: 29 }, gender: "FEMALE", currentLocation: "杭州", unresolved: [] },
+      page: 1,
+    });
+  });
+
   it("keeps table cells aligned with headers after repeatedly hiding and showing columns", async () => {
     globalThis.React = React;
     const { MemberWorkbench } = await loadWorkbench();

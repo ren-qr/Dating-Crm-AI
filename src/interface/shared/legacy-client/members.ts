@@ -94,6 +94,31 @@ export type MemberListQuery = {
   pageSize?: number;
 };
 
+export type MemberSearchDraft = {
+  age?:
+    | { mode: "exact"; value: number }
+    | { mode: "bounds"; min?: number; max?: number }
+    | { mode: "around"; value: number };
+  gender?: Gender;
+  currentLocation?: string;
+  hometownLocation?: string;
+  education?: string;
+  occupation?: string;
+  incomeRange?: string;
+  pageSize?: number;
+  unresolved: Array<{ text: string; reason: string }>;
+};
+
+export type MemberSearchWorkbenchItem = {
+  id: string;
+  name: string;
+  age: number | null;
+  gender: Gender;
+  occupation: string | null;
+  education: string | null;
+  currentLocation: { province: string | null; city: string | null; district: string | null };
+};
+
 export type CreateMemberInput = {
   name: string;
   phone?: string;
@@ -487,6 +512,26 @@ export async function fetchMembers(query: MemberListQuery): Promise<PaginatedRes
 
   return request<PaginatedResponse<MemberListItem>>(`${API_BASE}?${params.toString()}`, {
     method: "GET",
+  });
+}
+
+export async function quickFillMemberSearch(text: string): Promise<MemberSearchDraft> {
+  const payload = await request<{ draft: MemberSearchDraft }>("/api/v1/ai/member-search-draft", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  return payload.draft;
+}
+
+export async function searchMembersWorkbench(
+  draft: MemberSearchDraft,
+  page = 1,
+): Promise<PaginatedResponse<MemberSearchWorkbenchItem>> {
+  return request<PaginatedResponse<MemberSearchWorkbenchItem>>("/api/v1/members/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ draft, page }),
   });
 }
 
