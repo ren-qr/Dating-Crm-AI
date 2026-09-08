@@ -1,7 +1,7 @@
 {
   "schema_version": "phase1-agent-eval-v0.1",
   "runner": "deterministic-runtime",
-  "generated_at": "2026-09-07T16:35:28.580Z",
+  "generated_at": "2026-09-08T02:01:27.941Z",
   "total_scenarios": 60,
   "total_turns": 72,
   "passed_turns": 72,
@@ -42,7 +42,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 3
+          "latency_ms": 4
         }
       ],
       "pass": true
@@ -119,7 +119,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 1
         }
       ],
       "pass": true
@@ -342,14 +342,14 @@
             "status": "Completed",
             "capability": "search_members",
             "args": {
-              "currentCityCode": "310100"
+              "currentCityCode": "3101"
             }
           },
           "actual": {
             "status": "Completed",
             "capability": "search_members",
             "args": {
-              "currentCityCode": "310100",
+              "currentCityCode": "3101",
               "page": 1,
               "pageSize": 10
             },
@@ -363,7 +363,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 1
+          "latency_ms": 3
         }
       ],
       "pass": true
@@ -378,14 +378,14 @@
             "status": "Completed",
             "capability": "search_members",
             "args": {
-              "hometownCityCode": "330100"
+              "hometownCityCode": "3301"
             }
           },
           "actual": {
             "status": "Completed",
             "capability": "search_members",
             "args": {
-              "hometownCityCode": "330100",
+              "hometownCityCode": "3301",
               "page": 1,
               "pageSize": 10
             },
@@ -399,7 +399,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 4
         }
       ],
       "pass": true
@@ -428,7 +428,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 5
         }
       ],
       "pass": true
@@ -453,40 +453,7 @@
             "args": {
               "ageMin": 26,
               "ageMax": 30,
-              "currentCityCode": "310100",
-              "page": 1,
-              "pageSize": 10
-            },
-            "clarificationField": null,
-            "hasActiveQuery": true,
-            "selectedMember": false,
-            "displayType": "member_list",
-            "managerCalled": true,
-            "errorName": null
-          },
-          "pass": true,
-          "failure_stage": null,
-          "failure_reason": null,
-          "latency_ms": 0
-        },
-        {
-          "input": "再年轻一点",
-          "expected": {
-            "status": "Completed",
-            "capability": "search_members",
-            "args": {
-              "ageMin": 24,
-              "ageMax": 28,
-              "currentCityCode": "310100"
-            }
-          },
-          "actual": {
-            "status": "Completed",
-            "capability": "search_members",
-            "args": {
-              "ageMin": 24,
-              "ageMax": 28,
-              "currentCityCode": "310100",
+              "currentCityCode": "3101",
               "page": 1,
               "pageSize": 10
             },
@@ -501,6 +468,39 @@
           "failure_stage": null,
           "failure_reason": null,
           "latency_ms": 1
+        },
+        {
+          "input": "再年轻一点",
+          "expected": {
+            "status": "Completed",
+            "capability": "search_members",
+            "args": {
+              "ageMin": 24,
+              "ageMax": 28,
+              "currentCityCode": "3101"
+            }
+          },
+          "actual": {
+            "status": "Completed",
+            "capability": "search_members",
+            "args": {
+              "ageMin": 24,
+              "ageMax": 28,
+              "currentCityCode": "3101",
+              "page": 1,
+              "pageSize": 10
+            },
+            "clarificationField": null,
+            "hasActiveQuery": true,
+            "selectedMember": false,
+            "displayType": "member_list",
+            "managerCalled": true,
+            "errorName": null
+          },
+          "pass": true,
+          "failure_stage": null,
+          "failure_reason": null,
+          "latency_ms": 0
         }
       ],
       "pass": true
@@ -561,7 +561,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 1
         },
         {
           "input": "下一页",
@@ -678,7 +678,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 1
         },
         {
           "input": "第三个看看",
@@ -705,7 +705,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 1
+          "latency_ms": 0
         }
       ],
       "pass": true
@@ -795,7 +795,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 1
         },
         {
           "input": "第99个看看",
@@ -843,7 +843,7 @@
             "args": {
               "ageMin": 26,
               "ageMax": 30,
-              "currentCityCode": "310100",
+              "currentCityCode": "3101",
               "page": 1,
               "pageSize": 10
             },
@@ -857,7 +857,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 1
+          "latency_ms": 0
         },
         {
           "input": "再年轻一点",
@@ -875,7 +875,7 @@
             "args": {
               "ageMin": 24,
               "ageMax": 28,
-              "currentCityCode": "310100",
+              "currentCityCode": "3101",
               "page": 1,
               "pageSize": 10
             },
@@ -889,7 +889,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 1
         },
         {
           "input": "第三个看看",
@@ -1124,7 +1124,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 1
+          "latency_ms": 0
         }
       ],
       "pass": true
@@ -1211,7 +1211,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 1
         }
       ],
       "pass": true
@@ -1364,7 +1364,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 1
         }
       ],
       "pass": true
@@ -1480,7 +1480,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 1
+          "latency_ms": 0
         }
       ],
       "pass": true
@@ -1544,7 +1544,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 1
         }
       ],
       "pass": true
@@ -1886,7 +1886,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 1
         },
         {
           "input": "继续",
@@ -1923,7 +1923,7 @@
             "status": "Completed",
             "capability": "search_members",
             "args": {
-              "currentCityCode": "310100"
+              "currentCityCode": "3101"
             }
           },
           "actual": {
@@ -1932,7 +1932,7 @@
             "args": {
               "ageMin": 26,
               "ageMax": 30,
-              "currentCityCode": "310100",
+              "currentCityCode": "3101",
               "page": 1,
               "pageSize": 10
             },
@@ -2004,7 +2004,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 1
+          "latency_ms": 0
         }
       ],
       "pass": true
@@ -2036,7 +2036,7 @@
           "pass": true,
           "failure_stage": null,
           "failure_reason": null,
-          "latency_ms": 0
+          "latency_ms": 2
         },
         {
           "input": "查看第3位",

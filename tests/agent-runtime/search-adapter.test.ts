@@ -21,8 +21,8 @@ describe("real search adapter + existing deterministic tool", () => {
         gender: "FEMALE",
         occupation: "工程师",
         education: "本科",
-        currentProvince: "330000",
-        currentCity: "330100",
+        currentProvince: "33",
+        currentCity: "3301",
         currentDistrict: null,
       },
     ]);

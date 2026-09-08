@@ -1,18 +1,20 @@
 import { z } from "zod";
 import type { AtomicTool } from "../registry";
 
-const code = z.string().regex(/^\d{6}$/);
+const provinceCode = z.string().regex(/^\d{2}$/);
+const cityCode = z.string().regex(/^\d{4}$/);
+const districtCode = z.string().regex(/^\d{6}$/);
 export const searchInputSchema = z
   .object({
     ageMin: z.number().int().min(18).max(100).optional(),
     ageMax: z.number().int().min(18).max(100).optional(),
     gender: z.enum(["MALE", "FEMALE", "OTHER", "UNKNOWN"]).optional(),
-    currentProvinceCode: code.optional(),
-    currentCityCode: code.optional(),
-    currentDistrictCode: code.optional(),
-    hometownProvinceCode: code.optional(),
-    hometownCityCode: code.optional(),
-    hometownDistrictCode: code.optional(),
+    currentProvinceCode: provinceCode.optional(),
+    currentCityCode: cityCode.optional(),
+    currentDistrictCode: districtCode.optional(),
+    hometownProvinceCode: provinceCode.optional(),
+    hometownCityCode: cityCode.optional(),
+    hometownDistrictCode: districtCode.optional(),
     occupation: z.string().trim().min(1).max(100).optional(),
     education: z.string().trim().min(1).max(100).optional(),
     incomeRange: z.string().trim().min(1).max(100).optional(),

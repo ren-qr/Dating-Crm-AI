@@ -108,7 +108,7 @@ const memberRows = Array.from({ length: 15 }, (_, index) => ({
     gender: index % 2 === 0 ? "FEMALE" : "MALE",
     occupation: index % 3 === 0 ? "教师" : "工程师",
     education: index % 2 === 0 ? "硕士" : "本科",
-    currentLocation: { province: "310000", city: "310100", district: null },
+    currentLocation: { province: "31", city: "3101", district: null },
   },
 }));
 

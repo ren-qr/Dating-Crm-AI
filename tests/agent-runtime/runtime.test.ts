@@ -21,7 +21,7 @@ const context: RuntimeContext = {
   operatorId: "employee-a", storeId: "store-a", sessionId: "session-a", traceId: "trace-a", trustZone: "cloud",
 };
 const request = { capability: "search_members", args: { gender: { kind: "exact", value: "FEMALE" } } };
-const raw: RawResult = { rows: [{ storeId: "store-a", ownerId: "employee-a", data: { memberId: "private-db-id", name: "测试会员", age: 28, gender: "FEMALE", occupation: "工程师", education: "本科", currentLocation: { province: "330000", city: "330100", district: null } } }], meta: { page: 1, pageSize: 20, total: 1, hasNext: false } };
+const raw: RawResult = { rows: [{ storeId: "store-a", ownerId: "employee-a", data: { memberId: "private-db-id", name: "测试会员", age: 28, gender: "FEMALE", occupation: "工程师", education: "本科", currentLocation: { province: "33", city: "3301", district: null } } }], meta: { page: 1, pageSize: 20, total: 1, hasNext: false } };
 
 function setup() {
   const registry = new CapabilityRegistry([searchCapability, getMemberProfileCapability]);

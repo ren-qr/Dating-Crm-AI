@@ -72,9 +72,7 @@ async function normalizeRequest(
   const resolved = await resolveSearchSemantics(request, state, areas);
   if ("status" in resolved) return null;
   // The replay mirrors the Gateway's semantic output and then adds the same
-  // search defaults. It intentionally does not invoke the final input schema:
-  // Area currently contains variable-length codes, while that legacy schema is
-  // still six-digit-only and is tracked as a separate production contract gap.
+  // search defaults used by the production schema.
   return {
     intent: normalizedIntent(request),
     resolvedFilters: {

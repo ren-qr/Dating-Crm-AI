@@ -11,19 +11,40 @@ export class AreaResolver {
   async resolve(value: string): Promise<ResolvedArea | GatewayStop> {
     const input = value.trim();
     if (!input) return clarification("location", "empty_location", "请说明需要筛选的地区。");
-    const where = /^\d{6}$/.test(input)
-      ? { code: input, isActive: true }
+    const codeLevel = areaLevelForCode(input);
+    const where = codeLevel
+      ? { code: input, level: codeLevel, isActive: true }
       : { name: { in: areaNameVariants(input) }, isActive: true };
     const candidates = await prisma.area.findMany({ where, take: 3 });
     if (candidates.length === 0) {
       return clarification("location", "area_not_found", "未找到可用地区，请使用省、市或区县名称。");
     }
-    if (candidates.length > 1) {
+    const area = selectUnambiguousArea(candidates);
+    if (!area) {
       return clarification("location", "area_ambiguous", "该地区名称不唯一，请补充省、市或区县。");
     }
-    const area = candidates[0];
     return { code: area.code, name: area.name, level: area.level };
   }
+}
+
+function areaLevelForCode(value: string): ResolvedArea["level"] | null {
+  if (/^\d{2}$/.test(value)) return "PROVINCE";
+  if (/^\d{4}$/.test(value)) return "CITY";
+  if (/^\d{6}$/.test(value)) return "DISTRICT";
+  return null;
+}
+
+function selectUnambiguousArea<T extends ResolvedArea & { parentCode: string | null }>(areas: T[]): T | null {
+  if (areas.length === 1) return areas[0];
+
+  // Municipalities have a province and a city row with the same display name.
+  // Natural-language location queries should resolve to the city row, which is
+  // the Member location field used for ordinary city-level filtering.
+  const province = areas.find((area) => area.level === "PROVINCE");
+  const city = areas.find(
+    (area) => area.level === "CITY" && area.parentCode === province?.code && area.name === province.name,
+  );
+  return province && city && areas.length === 2 ? city : null;
 }
 
 function areaNameVariants(value: string) {

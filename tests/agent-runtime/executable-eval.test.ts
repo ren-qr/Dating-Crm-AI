@@ -33,10 +33,10 @@ import {
 } from "@/agent-system/eval/phase1-runner";
 
 const areaByName = new Map([
-  ["上海", { code: "310100", name: "上海市", level: "CITY" }],
-  ["杭州", { code: "330100", name: "杭州市", level: "CITY" }],
-  ["北京", { code: "110100", name: "北京市", level: "CITY" }],
-  ["成都", { code: "510100", name: "成都市", level: "CITY" }],
+  ["上海", { code: "3101", name: "上海市", level: "CITY" }],
+  ["杭州", { code: "3301", name: "杭州市", level: "CITY" }],
+  ["北京", { code: "1101", name: "北京市", level: "CITY" }],
+  ["成都", { code: "5101", name: "成都市", level: "CITY" }],
 ]);
 
 beforeEach(() => {
