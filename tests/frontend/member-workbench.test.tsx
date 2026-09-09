@@ -131,7 +131,8 @@ describe("会员运营工作台 MVP", () => {
   });
 
   it("uses AI only to fill a visible draft and executes the user's edited structured filters", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      void init;
       const url = String(input);
       if (url === "/api/v1/ai/member-search-draft") {
         return Response.json({
@@ -183,6 +184,44 @@ describe("会员运营工作台 MVP", () => {
       draft: { age: { mode: "bounds", max: 29 }, gender: "FEMALE", currentLocation: "杭州", unresolved: [] },
       page: 1,
     });
+  });
+
+  it("warns about unresolved AI conditions and requires explicit confirmation before searching", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/v1/ai/member-search-draft") {
+        return Response.json({
+          code: 0,
+          message: "success",
+          data: { draft: { age: { mode: "bounds", max: 30 }, gender: "FEMALE", currentLocation: "杭州", unresolved: [{ text: "条件不错", reason: "没有已定义的业务规则" }] } },
+          requestId: "quick-fill-request",
+          timestamp: "2026-09-09T00:00:00.000Z",
+        });
+      }
+      if (url === "/api/v1/members/search") {
+        return Response.json({ code: 0, message: "success", data: { items: [], page: 1, pageSize: 10, total: 0, hasNext: false }, requestId: "search-request", timestamp: "2026-09-09T00:00:00.000Z" });
+      }
+      if (url === "/api/v1/members/owners" || url === "/api/v1/stores") {
+        return Response.json({ code: 0, message: "success", data: url.endsWith("owners") ? [] : { items: [] }, requestId: "support-request", timestamp: "2026-09-09T00:00:00.000Z" });
+      }
+      return Response.json({ code: 0, message: "success", data: { items: [], page: 1, pageSize: 20, total: 0, hasNext: false }, requestId: "members-request", timestamp: "2026-09-09T00:00:00.000Z" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    globalThis.React = React;
+    const { MemberWorkbench } = await loadWorkbench();
+    render(<MemberWorkbench />);
+
+    fireEvent.change(screen.getByLabelText("AI 快速填写"), { target: { value: "杭州30岁以下、条件不错的女生" } });
+    fireEvent.click(screen.getByRole("button", { name: "识别条件" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("不会参与查询");
+    expect(screen.getByText("条件不错：没有已定义的业务规则")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "查询" })).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/v1/members/search")).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "确认忽略未解析条件" }));
+    expect(screen.getByRole("button", { name: "查询" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/v1/members/search")).toBe(true));
   });
 
   it("keeps table cells aligned with headers after repeatedly hiding and showing columns", async () => {

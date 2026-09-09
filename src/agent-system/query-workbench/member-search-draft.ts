@@ -44,6 +44,13 @@ export async function resolveMemberSearchDraft(
   }
 
   const draft = parsed.data;
+  if (draft.unresolved.length > 0) {
+    return {
+      status: "ValidationError",
+      message: "存在未解析筛选条件，请确认忽略或修正后再查询。",
+      details: { unresolved: draft.unresolved },
+    };
+  }
   const filters: JsonRecord = {};
   if (draft.age?.mode === "exact") {
     filters.ageMin = draft.age.value;

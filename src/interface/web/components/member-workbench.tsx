@@ -318,6 +318,10 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
 
   function runSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (searchDraft.unresolved.length > 0) {
+      setQuickFillError("存在未解析条件，请先修正，或明确确认忽略后再查询。");
+      return;
+    }
     setStructuredSearch({ draft: searchDraft, page: 1 });
   }
 
@@ -483,10 +487,19 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
             <TextField label="职业" value={searchDraft.occupation ?? ""} onChange={(occupation) => setSearchDraft((current) => ({ ...current, occupation: occupation || undefined }))} />
             <TextField label="收入范围" value={searchDraft.incomeRange ?? ""} onChange={(incomeRange) => setSearchDraft((current) => ({ ...current, incomeRange: incomeRange || undefined }))} />
           </div>
+          {searchDraft.unresolved.length > 0 ? (
+            <div className="flex flex-col gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="alert">
+              <span>以下条件未被识别，不会参与查询；请修正筛选条件，或明确确认忽略。</span>
+              <div className="flex flex-wrap items-center gap-2">
+                {searchDraft.unresolved.map((item) => <span key={`${item.text}-${item.reason}`} className="rounded border border-amber-300 bg-white px-2 py-1">{item.text}：{item.reason}</span>)}
+                <button className="h-7 rounded-md border border-amber-400 bg-white px-2.5 font-medium hover:bg-amber-100" type="button" onClick={() => setSearchDraft((current) => ({ ...current, unresolved: [] }))}>确认忽略未解析条件</button>
+              </div>
+            </div>
+          ) : null}
           <div className="flex min-h-7 flex-wrap items-center gap-2 text-xs text-zinc-500">
             {searchDraftChips(searchDraft).length > 0 ? searchDraftChips(searchDraft).map((filter) => <span key={filter} className="rounded border border-zinc-200 bg-white px-2 py-1 text-zinc-600">{filter}</span>) : <span>未设置筛选条件</span>}
             <button className="ml-auto h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-100" type="button" onClick={resetSearch}>清空</button>
-            <button className="h-8 rounded-md bg-zinc-950 px-4 text-xs font-medium text-white hover:bg-zinc-800" type="submit">查询</button>
+            <button className="h-8 rounded-md bg-zinc-950 px-4 text-xs font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50" type="submit" disabled={searchDraft.unresolved.length > 0}>查询</button>
           </div>
         </div>
       </form>

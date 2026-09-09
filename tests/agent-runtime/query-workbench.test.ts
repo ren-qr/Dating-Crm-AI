@@ -13,6 +13,7 @@ import { executeMemberSearchDraft } from "@/agent-system/query-workbench/member-
 import { MemberSearchDraftParseError, parseMemberSearchDraft } from "@/agent-system/query-workbench/member-search-parser";
 import { resolveMemberSearchDraft } from "@/agent-system/query-workbench/member-search-draft";
 import type { RuntimeContext } from "@/agent-system/runtime/runtime-context";
+import { applicationTrace, getApplicationTraceEvents } from "@/agent-system/tracing/application-trace";
 
 const areas = [
   { code: "33", name: "浙江省", parentCode: null, level: "PROVINCE" as const, isActive: true },
@@ -43,6 +44,7 @@ const context: RuntimeContext = {
 };
 
 beforeEach(() => {
+  applicationTrace.events.length = 0;
   mocks.areaFindMany.mockImplementation(({ where }: { where: { code?: string; name?: { in?: string[] } } }) => {
     if (where.code) return Promise.resolve(areas.filter((area) => area.code === where.code));
     return Promise.resolve(areas.filter((area) => where.name?.in?.includes(area.name)));
@@ -109,6 +111,15 @@ describe("Query Workbench draft and execution", () => {
     }));
     expect(JSON.stringify(result)).not.toContain("phone");
     expect(JSON.stringify(result)).not.toContain("store-a");
+    expect(getApplicationTraceEvents(context.traceId).map((event) => event.stage)).toEqual(expect.arrayContaining([
+      "authorization",
+      "resolved_structured_action",
+      "workbench_execution_started",
+      "workbench_execution_completed",
+      "row_permission",
+      "field_permission",
+      "authorized_display",
+    ]));
   });
 
   it.each([
@@ -130,5 +141,20 @@ describe("Query Workbench draft and execution", () => {
       currentLocation: "3301",
       unresolved: [],
     }))).rejects.toBeInstanceOf(MemberSearchDraftParseError);
+  });
+
+  it("preserves partial AI parsing as unresolved and blocks execution until the user confirms it", async () => {
+    const draft = await parseMemberSearchDraft("杭州30岁以下、条件不错的女生", async () => JSON.stringify({
+      age: { mode: "bounds", max: 30 },
+      gender: "FEMALE",
+      currentLocation: "杭州",
+      unresolved: [{ text: "条件不错", reason: "没有已定义的业务规则" }],
+    }));
+    expect(draft.unresolved).toEqual([{ text: "条件不错", reason: "没有已定义的业务规则" }]);
+    await expect(executeMemberSearchDraft(draft, 1, context)).resolves.toMatchObject({
+      status: "ValidationError",
+      message: "存在未解析筛选条件，请确认忽略或修正后再查询。",
+    });
+    expect(mocks.memberFindMany).not.toHaveBeenCalled();
   });
 });

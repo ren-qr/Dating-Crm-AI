@@ -7,7 +7,7 @@ import { getMemberProfileCapability } from "../capabilities/tools/get-member-pro
 import { searchMembersAdapter } from "../execution/adapters/search-members";
 import { getMemberProfileAdapter } from "../execution/adapters/get-member-profile";
 import { MemoryStateStore } from "../state/state-store";
-import { MemoryTrace } from "../tracing/trace";
+import { applicationTrace } from "../tracing/application-trace";
 import { MemoryAudit } from "../tracing/audit";
 import { MemoryEval } from "../tracing/eval-hooks";
 import { ModelManager, type Manager } from "./manager";
@@ -17,7 +17,7 @@ const runtime = new AgentLoop({
   registry: new CapabilityRegistry([searchCapability, getMemberProfileCapability]),
   adapters: { search_members: searchMembersAdapter, get_member_profile: getMemberProfileAdapter },
   state: new MemoryStateStore(),
-  trace: new MemoryTrace(),
+  trace: applicationTrace,
   audit: new MemoryAudit(),
   evalHooks: new MemoryEval(),
 });

@@ -5,7 +5,7 @@ import { searchMembersAdapter } from "../execution/adapters/search-members";
 import { CapabilityGateway } from "../gateway/capability-gateway";
 import { applyResultPolicy, buildAuthorizedDisplayResult, scopedRows } from "../result/result-policy";
 import type { RuntimeContext } from "../runtime/runtime-context";
-import { MemoryTrace } from "../tracing/trace";
+import { applicationTrace } from "../tracing/application-trace";
 import { resolveMemberSearchDraft, type MemberSearchDraft } from "./member-search-draft";
 
 export type MemberSearchWorkbenchResult = {
@@ -32,22 +32,36 @@ export async function executeMemberSearchDraft(
   const resolved = await resolveMemberSearchDraft(draft);
   if ("status" in resolved) return resolved;
 
-  const trace = new MemoryTrace();
   const registry = new CapabilityRegistry([searchCapability]);
-  const gateway = new CapabilityGateway(registry, trace);
+  const gateway = new CapabilityGateway(registry, applicationTrace);
   const gatewayResult = await gateway.resolveStructuredSearch({
     ...resolved.filters,
     page,
   }, context);
   if (gatewayResult.status !== "ResolvedAction") return gatewayResult;
 
-  const raw = await new Executor(registry, gateway, { search_members: searchMembersAdapter })
-    .execute(gatewayResult.action, context);
+  applicationTrace.record(context.traceId, "workbench_execution_started", { capability: "search_members" });
+  let raw: RawResult;
+  try {
+    raw = await new Executor(registry, gateway, { search_members: searchMembersAdapter })
+      .execute(gatewayResult.action, context);
+  } catch (error) {
+    applicationTrace.record(context.traceId, "workbench_execution_failed", {
+      capability: "search_members",
+      error: error instanceof Error ? error.name : "UnknownError",
+    });
+    throw error;
+  }
+  applicationTrace.record(context.traceId, "workbench_execution_completed", {
+    capability: "search_members",
+    rowCount: raw.rows.length,
+  });
   // Both policy products are applied. The safe result remains the only result
   // eligible for a model; this browser-only projection uses the authorized
   // display policy and keeps an ID solely for the existing detail endpoint.
-  applyResultPolicy(raw, searchCapability, context, trace);
+  applyResultPolicy(raw, searchCapability, context, applicationTrace);
   const display = buildAuthorizedDisplayResult(raw, context, `workbench-${context.traceId}`, "member_list");
+  applicationTrace.record(context.traceId, "authorized_display", { itemCount: display.items.length });
   return workbenchResult(raw, display.items, context);
 }
 
