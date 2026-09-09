@@ -1,3 +1,4 @@
+import type { MemberQuery } from "@/ai-query/member-query-contract";
 import { ApiError, request, type ApiEnvelope, type PaginatedResponse } from "@/interface/shared/client/api-client";
 
 export { ApiError, request };
@@ -94,29 +95,22 @@ export type MemberListQuery = {
   pageSize?: number;
 };
 
-export type MemberSearchDraft = {
-  age?:
-    | { mode: "exact"; value: number }
-    | { mode: "bounds"; min?: number; max?: number }
-    | { mode: "around"; value: number };
-  gender?: Gender;
-  currentLocation?: string;
-  hometownLocation?: string;
-  education?: string;
-  occupation?: string;
-  incomeRange?: string;
-  pageSize?: number;
-  unresolved: Array<{ text: string; reason: string }>;
-};
+export type { MemberQuery };
 
-export type MemberSearchWorkbenchItem = {
+export type MemberQueryResultItem = {
   id: string;
+  memberNo: string;
   name: string;
   age: number | null;
   gender: Gender;
+  status: string;
+  heightCm: number | null;
+  weightKg: number | null;
   occupation: string | null;
   education: string | null;
+  maritalStatus: string | null;
   currentLocation: { province: string | null; city: string | null; district: string | null };
+  profileCompletenessPercent: number;
 };
 
 export type CreateMemberInput = {
@@ -515,23 +509,23 @@ export async function fetchMembers(query: MemberListQuery): Promise<PaginatedRes
   });
 }
 
-export async function quickFillMemberSearch(text: string): Promise<MemberSearchDraft> {
-  const payload = await request<{ draft: MemberSearchDraft }>("/api/v1/ai/member-search-draft", {
+export async function parseMemberQuery(text: string): Promise<MemberQuery> {
+  const payload = await request<{ query: MemberQuery }>("/api/v1/ai/member-query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
   });
-  return payload.draft;
+  return payload.query;
 }
 
-export async function searchMembersWorkbench(
-  draft: MemberSearchDraft,
+export async function executeMemberQuery(
+  query: MemberQuery,
   page = 1,
-): Promise<PaginatedResponse<MemberSearchWorkbenchItem>> {
-  return request<PaginatedResponse<MemberSearchWorkbenchItem>>("/api/v1/members/search", {
+): Promise<PaginatedResponse<MemberQueryResultItem>> {
+  return request<PaginatedResponse<MemberQueryResultItem>>("/api/v1/members/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ draft, page }),
+    body: JSON.stringify({ query, page }),
   });
 }
 

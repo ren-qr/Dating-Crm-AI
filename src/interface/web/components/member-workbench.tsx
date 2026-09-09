@@ -13,7 +13,8 @@ import {
   MemberDetail,
   MemberListItem,
   MemberListQuery,
-  MemberSearchDraft,
+  MemberQuery,
+  MemberQueryResultItem,
   MemberOwner,
   UpdateMemberInput,
   canUse,
@@ -29,8 +30,8 @@ import {
   fetchMembers,
   fetchStores,
   getMemberProfileFields,
-  quickFillMemberSearch,
-  searchMembersWorkbench,
+  executeMemberQuery,
+  parseMemberQuery,
   updateMember,
   unwrapItems,
 } from "@/interface/shared/legacy-client/members";
@@ -89,8 +90,6 @@ const initialQuery: Required<MemberListQuery> = {
   page: 1,
   pageSize: 20,
 };
-
-const initialSearchDraft: MemberSearchDraft = { unresolved: [] };
 
 const initialForm: CreateMemberInput = {
   name: "",
@@ -184,8 +183,8 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
   const [selectedMember, setSelectedMember] = useState<MemberListItem | null>(null);
   const [storeOptions, setStoreOptions] = useState<{ value: string; label: string }[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(defaultVisibleColumns);
-  const [searchDraft, setSearchDraft] = useState<MemberSearchDraft>(initialSearchDraft);
-  const [structuredSearch, setStructuredSearch] = useState<{ draft: MemberSearchDraft; page: number } | null>(null);
+  const [memberQuery, setMemberQuery] = useState<MemberQuery | null>(null);
+  const [activeMemberQuery, setActiveMemberQuery] = useState<{ query: MemberQuery; page: number } | null>(null);
   const [quickFillText, setQuickFillText] = useState("");
   const [quickFillError, setQuickFillError] = useState<string | null>(null);
   const [quickFilling, setQuickFilling] = useState(false);
@@ -247,12 +246,12 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
       setError(null);
 
       try {
-        const result = structuredSearch
-          ? await searchMembersWorkbench(structuredSearch.draft, structuredSearch.page)
+        const result = activeMemberQuery
+          ? await executeMemberQuery(activeMemberQuery.query, activeMemberQuery.page)
           : await fetchMembers(query);
         let resultItems: MemberListItem[];
-        if (structuredSearch) {
-          resultItems = (result as Awaited<ReturnType<typeof searchMembersWorkbench>>).items
+        if (activeMemberQuery) {
+          resultItems = (result as Awaited<ReturnType<typeof executeMemberQuery>>).items
             .map((item) => searchResultToMember(item));
         } else {
           resultItems = (result as Awaited<ReturnType<typeof fetchMembers>>).items;
@@ -279,7 +278,7 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
     loadMembers();
 
     return () => controller.abort();
-  }, [canRead, query, structuredSearch]);
+  }, [canRead, query, activeMemberQuery]);
 
   useEffect(() => {
     if (!canWrite) {
@@ -318,18 +317,23 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
 
   function runSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (searchDraft.unresolved.length > 0) {
+    if (!memberQuery) {
+      setQuickFillError("请先输入自然语言并解析查询条件。");
+      return;
+    }
+    if (memberQuery.unresolved.length > 0) {
       setQuickFillError("存在未解析条件，请先修正，或明确确认忽略后再查询。");
       return;
     }
-    setStructuredSearch({ draft: searchDraft, page: 1 });
+    setActiveMemberQuery({ query: memberQuery, page: 1 });
   }
 
   function resetSearch() {
     setDraftQuery(initialQuery);
     setQuery(initialQuery);
-    setSearchDraft(initialSearchDraft);
-    setStructuredSearch(null);
+    setMemberQuery(null);
+    setActiveMemberQuery(null);
+    setQuickFillText("");
     setQuickFillError(null);
   }
 
@@ -337,7 +341,7 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
     setQuickFilling(true);
     setQuickFillError(null);
     try {
-      setSearchDraft(await quickFillMemberSearch(quickFillText));
+      setMemberQuery(await parseMemberQuery(quickFillText));
     } catch (quickFillError) {
       setQuickFillError(formatError(quickFillError));
     } finally {
@@ -367,7 +371,7 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
     const merged = { ...draftQuery, ...next, page: 1 };
     setDraftQuery(merged);
     setQuery(merged);
-    setStructuredSearch(null);
+    setActiveMemberQuery(null);
   }
 
   function sortByColumn(column: (typeof tableColumns)[number]) {
@@ -472,34 +476,32 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
       <form className="border-b border-zinc-200 bg-zinc-50/70 px-5 py-4" onSubmit={runSearch}>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-2 sm:flex-row">
-            <label className="sr-only" htmlFor="member-quick-fill">AI 快速填写</label>
-            <input id="member-quick-fill" className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm" value={quickFillText} onChange={(event) => setQuickFillText(event.target.value)} placeholder="AI 快速填写，例如：杭州30岁以下女生" />
-            <button className="h-10 rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50" type="button" disabled={quickFilling || !quickFillText.trim()} onClick={() => void quickFillSearchDraft()}>{quickFilling ? "识别中..." : "识别条件"}</button>
+            <label className="sr-only" htmlFor="member-natural-query">会员自然语言查询</label>
+            <input id="member-natural-query" className="h-10 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm" value={quickFillText} onChange={(event) => setQuickFillText(event.target.value)} placeholder="例如：杭州30岁左右175以上本科未婚女生" />
+            <button className="h-10 rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50" type="button" disabled={quickFilling || !quickFillText.trim()} onClick={() => void quickFillSearchDraft()}>{quickFilling ? "解析中..." : "解析条件"}</button>
           </div>
           {quickFillError ? <p className="text-xs text-amber-700">{quickFillError}</p> : null}
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <TextField label="最小年龄" value={searchDraft.age?.mode === "bounds" ? String(searchDraft.age.min ?? "") : searchDraft.age?.mode === "exact" ? String(searchDraft.age.value) : ""} type="number" min={18} max={100} onChange={(value) => setSearchDraft((current) => ({ ...current, age: value ? { mode: "bounds", min: Number(value), max: current.age?.mode === "bounds" ? current.age.max : undefined } : current.age?.mode === "bounds" && current.age.max !== undefined ? { mode: "bounds", max: current.age.max } : undefined }))} />
-            <TextField label="最大年龄" value={searchDraft.age?.mode === "bounds" ? String(searchDraft.age.max ?? "") : searchDraft.age?.mode === "exact" ? String(searchDraft.age.value) : ""} type="number" min={18} max={100} onChange={(value) => setSearchDraft((current) => ({ ...current, age: value ? { mode: "bounds", min: current.age?.mode === "bounds" ? current.age.min : undefined, max: Number(value) } : current.age?.mode === "bounds" && current.age.min !== undefined ? { mode: "bounds", min: current.age.min } : undefined }))} />
-            <SelectField label="性别" value={searchDraft.gender ?? ""} options={[{ value: "", label: "不限" }, { value: "FEMALE", label: "女" }, { value: "MALE", label: "男" }, { value: "OTHER", label: "其他" }, { value: "UNKNOWN", label: "未知" }]} onChange={(gender) => setSearchDraft((current) => ({ ...current, gender: gender ? gender as MemberSearchDraft["gender"] : undefined }))} />
-            <TextField label="现居地区" value={searchDraft.currentLocation ?? ""} hint="输入省、市或区县名称" onChange={(currentLocation) => setSearchDraft((current) => ({ ...current, currentLocation: currentLocation || undefined }))} />
-            <TextField label="籍贯" value={searchDraft.hometownLocation ?? ""} hint="输入省、市或区县名称" onChange={(hometownLocation) => setSearchDraft((current) => ({ ...current, hometownLocation: hometownLocation || undefined }))} />
-            <TextField label="学历" value={searchDraft.education ?? ""} onChange={(education) => setSearchDraft((current) => ({ ...current, education: education || undefined }))} />
-            <TextField label="职业" value={searchDraft.occupation ?? ""} onChange={(occupation) => setSearchDraft((current) => ({ ...current, occupation: occupation || undefined }))} />
-            <TextField label="收入范围" value={searchDraft.incomeRange ?? ""} onChange={(incomeRange) => setSearchDraft((current) => ({ ...current, incomeRange: incomeRange || undefined }))} />
-          </div>
-          {searchDraft.unresolved.length > 0 ? (
-            <div className="flex flex-col gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="alert">
-              <span>以下条件未被识别，不会参与查询；请修正筛选条件，或明确确认忽略。</span>
-              <div className="flex flex-wrap items-center gap-2">
-                {searchDraft.unresolved.map((item) => <span key={`${item.text}-${item.reason}`} className="rounded border border-amber-300 bg-white px-2 py-1">{item.text}：{item.reason}</span>)}
-                <button className="h-7 rounded-md border border-amber-400 bg-white px-2.5 font-medium hover:bg-amber-100" type="button" onClick={() => setSearchDraft((current) => ({ ...current, unresolved: [] }))}>确认忽略未解析条件</button>
+          {memberQuery ? (
+            <div className="flex flex-col gap-2 rounded-md border border-zinc-200 bg-white px-3 py-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2 text-zinc-700">
+                <span className="font-medium">识别结果</span>
+                <span className="rounded bg-zinc-100 px-2 py-1">{memberQuery.task === "find_member" ? "查找会员" : "条件搜索"}</span>
+                {memberQueryChips(memberQuery).map((filter) => <span key={filter} className="rounded border border-zinc-200 px-2 py-1">{filter}</span>)}
               </div>
+              {memberQuery.unresolved.length > 0 ? (
+                <div className="flex flex-col gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900" role="alert">
+                  <span>以下条件未被识别，不会参与查询；请修正条件，或明确确认忽略。</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {memberQuery.unresolved.map((item) => <span key={`${item.text}-${item.reason}`} className="rounded border border-amber-300 bg-white px-2 py-1">{item.text}：{item.reason}</span>)}
+                    <button className="h-7 rounded-md border border-amber-400 bg-white px-2.5 font-medium hover:bg-amber-100" type="button" onClick={() => setMemberQuery((current) => current ? { ...current, unresolved: [] } : current)}>确认忽略未解析条件</button>
+                  </div>
+                </div>
+              ) : null}
             </div>
-          ) : null}
-          <div className="flex min-h-7 flex-wrap items-center gap-2 text-xs text-zinc-500">
-            {searchDraftChips(searchDraft).length > 0 ? searchDraftChips(searchDraft).map((filter) => <span key={filter} className="rounded border border-zinc-200 bg-white px-2 py-1 text-zinc-600">{filter}</span>) : <span>未设置筛选条件</span>}
+          ) : <p className="text-xs text-zinc-500">输入自然语言后解析为可见查询条件，再执行确定性查询。</p>}
+          <div className="flex min-h-7 items-center gap-2 text-xs text-zinc-500">
             <button className="ml-auto h-8 rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-100" type="button" onClick={resetSearch}>清空</button>
-            <button className="h-8 rounded-md bg-zinc-950 px-4 text-xs font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50" type="submit" disabled={searchDraft.unresolved.length > 0}>查询</button>
+            <button className="h-8 rounded-md bg-zinc-950 px-4 text-xs font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50" type="submit" disabled={!memberQuery || memberQuery.unresolved.length > 0}>执行查询</button>
           </div>
         </div>
       </form>
@@ -549,14 +551,14 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
 
       <div className="flex flex-col gap-2 border-t border-zinc-200 bg-zinc-50/50 px-5 py-3 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
         <span>
-          第 {structuredSearch?.page ?? query.page} 页 · 共 {total} 条 · 每页 {structuredSearch?.draft.pageSize ?? query.pageSize} 条
+          第 {activeMemberQuery?.page ?? query.page} 页 · 共 {total} 条 · 每页 {query.pageSize} 条
         </span>
         <div className="flex items-center gap-2">
           <button
             className="h-7 rounded-md border border-zinc-300 px-2 font-medium text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
             type="button"
-            disabled={(structuredSearch?.page ?? query.page) <= 1 || loading}
-            onClick={() => structuredSearch ? setStructuredSearch({ ...structuredSearch, page: Math.max(1, structuredSearch.page - 1) }) : setQuery((current) => ({ ...current, page: Math.max(1, current.page - 1) }))}
+            disabled={(activeMemberQuery?.page ?? query.page) <= 1 || loading}
+            onClick={() => activeMemberQuery ? setActiveMemberQuery({ ...activeMemberQuery, page: Math.max(1, activeMemberQuery.page - 1) }) : setQuery((current) => ({ ...current, page: Math.max(1, current.page - 1) }))}
           >
             上一页
           </button>
@@ -564,7 +566,7 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
             className="h-7 rounded-md border border-zinc-300 px-2 font-medium text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
             type="button"
             disabled={!hasNext || loading}
-            onClick={() => structuredSearch ? setStructuredSearch({ ...structuredSearch, page: structuredSearch.page + 1 }) : setQuery((current) => ({ ...current, page: current.page + 1 }))}
+            onClick={() => activeMemberQuery ? setActiveMemberQuery({ ...activeMemberQuery, page: activeMemberQuery.page + 1 }) : setQuery((current) => ({ ...current, page: current.page + 1 }))}
           >
             下一页
           </button>
@@ -598,38 +600,42 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
   );
 }
 
-function searchDraftChips(draft: MemberSearchDraft) {
-  const age = draft.age?.mode === "bounds"
-    ? [draft.age.min !== undefined ? `${draft.age.min} 岁起` : null, draft.age.max !== undefined ? `${draft.age.max} 岁以下` : null].filter(Boolean).join(" · ")
-    : draft.age?.mode === "exact" ? `${draft.age.value} 岁`
-      : draft.age?.mode === "around" ? `${draft.age.value} 岁左右` : null;
-  return [
-    age,
-    draft.gender ? `性别：${genderLabels[draft.gender] ?? draft.gender}` : null,
-    draft.currentLocation ? `现居：${draft.currentLocation}` : null,
-    draft.hometownLocation ? `籍贯：${draft.hometownLocation}` : null,
-    draft.education ? `学历：${draft.education}` : null,
-    draft.occupation ? `职业：${draft.occupation}` : null,
-    draft.incomeRange ? `收入：${draft.incomeRange}` : null,
-    ...draft.unresolved.map((item) => `待确认：${item.text}`),
-  ].filter((item): item is string => Boolean(item));
+function memberQueryChips(query: MemberQuery) {
+  return query.filters.map((filter) => {
+    const value = Array.isArray(filter.value) ? filter.value.join(" - ") : String(filter.value);
+    if (filter.field === "gender") return `性别：${genderLabels[value] ?? value}`;
+    if (filter.field === "age" && filter.op === "around") return `${value} 岁左右（${Number(value) - 2}~${Number(value) + 2} 岁）`;
+    if (filter.field === "age" && filter.op === "lte") return `${value} 岁以下`;
+    if (filter.field === "age" && filter.op === "gte") return `${value} 岁以上`;
+    if (filter.op === "gte") return `${fieldLabel(filter.field)} ≥ ${value}`;
+    if (filter.op === "lte") return `${fieldLabel(filter.field)} ≤ ${value}`;
+    return `${fieldLabel(filter.field)}：${value}`;
+  });
 }
 
-function searchResultToMember(result: {
-  id: string;
-  name: string;
-  age: number | null;
-  gender: MemberSearchDraft["gender"];
-  occupation: string | null;
-  education: string | null;
-  currentLocation: { province: string | null; city: string | null; district: string | null };
-}): MemberListItem {
+function fieldLabel(field: MemberQuery["filters"][number]["field"]) {
+  return ({
+    memberNo: "会员编号", name: "姓名", gender: "性别", birthDate: "出生日期", age: "年龄", status: "状态",
+    heightCm: "身高", weightKg: "体重", education: "学历", occupation: "职业", incomeRange: "收入范围",
+    maritalStatus: "婚姻状况", housingStatus: "住房情况", vehicleStatus: "车辆情况", hometownProvince: "籍贯省",
+    hometownCity: "籍贯市", hometownDistrict: "籍贯区县", currentProvince: "现居省", currentCity: "现居市",
+    currentDistrict: "现居区县", hometownLocation: "籍贯", currentLocation: "现居地", profileCompletenessPercent: "资料完整度",
+    hobbies: "兴趣爱好", selfDescription: "自我描述", phone: "手机号", idCard: "身份证号",
+  } satisfies Record<MemberQuery["filters"][number]["field"], string>)[field];
+}
+
+function searchResultToMember(result: MemberQueryResultItem): MemberListItem {
   return {
     id: result.id,
     name: result.name,
     phoneMasked: null,
+    memberNo: result.memberNo,
     gender: result.gender ?? "UNKNOWN",
-    status: "-",
+    status: result.status,
+    profileCompletenessPercent: result.profileCompletenessPercent,
+    heightCm: result.heightCm,
+    weightKg: result.weightKg,
+    maritalStatus: result.maritalStatus,
     occupation: result.occupation,
     education: result.education,
     currentProvince: result.currentLocation.province,

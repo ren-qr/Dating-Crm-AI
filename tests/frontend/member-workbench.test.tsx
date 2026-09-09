@@ -130,25 +130,25 @@ describe("会员运营工作台 MVP", () => {
     expect(within(table).getByRole("button", { name: "查看详情" })).toHaveClass("text-zinc-700");
   });
 
-  it("uses AI only to fill a visible draft and executes the user's edited structured filters", async () => {
+  it("parses a visible V2 member query and executes that exact query", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       void init;
       const url = String(input);
-      if (url === "/api/v1/ai/member-search-draft") {
+      if (url === "/api/v1/ai/member-query") {
         return Response.json({
           code: 0,
           message: "success",
-          data: { draft: { age: { mode: "bounds", max: 30 }, gender: "FEMALE", currentLocation: "杭州", unresolved: [] } },
+          data: { query: { task: "search_members", filters: [{ field: "age", op: "lte", value: 30 }, { field: "gender", op: "eq", value: "FEMALE" }, { field: "currentLocation", op: "eq", value: "杭州" }], unresolved: [] } },
           requestId: "quick-fill-request",
           timestamp: "2026-09-08T00:00:00.000Z",
         });
       }
-      if (url === "/api/v1/members/search") {
+      if (url === "/api/v1/members/query") {
         return Response.json({
           code: 0,
           message: "success",
           data: {
-            items: [{ id: "member-workbench", name: "杭州会员", age: 29, gender: "FEMALE", occupation: "教师", education: "本科", currentLocation: { province: "33", city: "3301", district: "330102" } }],
+            items: [{ id: "member-workbench", memberNo: "M202609090001", name: "杭州会员", age: 29, gender: "FEMALE", status: "ACTIVE", heightCm: 165, weightKg: 50, maritalStatus: "未婚", occupation: "教师", education: "本科", profileCompletenessPercent: 80, currentLocation: { province: "33", city: "3301", district: "330102" } }],
             page: 1,
             pageSize: 10,
             total: 1,
@@ -168,20 +168,19 @@ describe("会员运营工作台 MVP", () => {
     const { MemberWorkbench } = await loadWorkbench();
     render(<MemberWorkbench />);
 
-    fireEvent.change(screen.getByLabelText("AI 快速填写"), { target: { value: "杭州30岁以下女生" } });
-    fireEvent.click(screen.getByRole("button", { name: "识别条件" }));
-    expect(await screen.findByText("现居：杭州")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("会员自然语言查询"), { target: { value: "杭州30岁以下女生" } });
+    fireEvent.click(screen.getByRole("button", { name: "解析条件" }));
+    expect(await screen.findByText("现居地：杭州")).toBeInTheDocument();
     expect(screen.getByText("性别：女")).toBeInTheDocument();
     expect(screen.getByText("30 岁以下")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("最大年龄"), { target: { value: "29" } });
-    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    fireEvent.click(screen.getByRole("button", { name: "执行查询" }));
     expect(await screen.findByText("杭州会员")).toBeInTheDocument();
 
-    const searchCall = fetchMock.mock.calls.find(([url]) => String(url) === "/api/v1/members/search");
+    const searchCall = fetchMock.mock.calls.find(([url]) => String(url) === "/api/v1/members/query");
     expect(searchCall).toBeTruthy();
     expect(JSON.parse(String(searchCall?.[1]?.body))).toEqual({
-      draft: { age: { mode: "bounds", max: 29 }, gender: "FEMALE", currentLocation: "杭州", unresolved: [] },
+      query: { task: "search_members", filters: [{ field: "age", op: "lte", value: 30 }, { field: "gender", op: "eq", value: "FEMALE" }, { field: "currentLocation", op: "eq", value: "杭州" }], unresolved: [] },
       page: 1,
     });
   });
@@ -189,16 +188,16 @@ describe("会员运营工作台 MVP", () => {
   it("warns about unresolved AI conditions and requires explicit confirmation before searching", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/v1/ai/member-search-draft") {
+      if (url === "/api/v1/ai/member-query") {
         return Response.json({
           code: 0,
           message: "success",
-          data: { draft: { age: { mode: "bounds", max: 30 }, gender: "FEMALE", currentLocation: "杭州", unresolved: [{ text: "条件不错", reason: "没有已定义的业务规则" }] } },
+          data: { query: { task: "search_members", filters: [{ field: "age", op: "lte", value: 30 }, { field: "gender", op: "eq", value: "FEMALE" }, { field: "currentLocation", op: "eq", value: "杭州" }], unresolved: [{ text: "条件不错", reason: "没有已定义的业务规则" }] } },
           requestId: "quick-fill-request",
           timestamp: "2026-09-09T00:00:00.000Z",
         });
       }
-      if (url === "/api/v1/members/search") {
+      if (url === "/api/v1/members/query") {
         return Response.json({ code: 0, message: "success", data: { items: [], page: 1, pageSize: 10, total: 0, hasNext: false }, requestId: "search-request", timestamp: "2026-09-09T00:00:00.000Z" });
       }
       if (url === "/api/v1/members/owners" || url === "/api/v1/stores") {
@@ -211,17 +210,17 @@ describe("会员运营工作台 MVP", () => {
     const { MemberWorkbench } = await loadWorkbench();
     render(<MemberWorkbench />);
 
-    fireEvent.change(screen.getByLabelText("AI 快速填写"), { target: { value: "杭州30岁以下、条件不错的女生" } });
-    fireEvent.click(screen.getByRole("button", { name: "识别条件" }));
+    fireEvent.change(screen.getByLabelText("会员自然语言查询"), { target: { value: "杭州30岁以下、条件不错的女生" } });
+    fireEvent.click(screen.getByRole("button", { name: "解析条件" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("不会参与查询");
     expect(screen.getByText("条件不错：没有已定义的业务规则")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "查询" })).toBeDisabled();
-    expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/v1/members/search")).toBe(false);
+    expect(screen.getByRole("button", { name: "执行查询" })).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/v1/members/query")).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: "确认忽略未解析条件" }));
-    expect(screen.getByRole("button", { name: "查询" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "查询" }));
-    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/v1/members/search")).toBe(true));
+    expect(screen.getByRole("button", { name: "执行查询" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "执行查询" }));
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/v1/members/query")).toBe(true));
   });
 
   it("keeps table cells aligned with headers after repeatedly hiding and showing columns", async () => {
