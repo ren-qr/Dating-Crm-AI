@@ -1,9 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/server/prisma";
 import { hashSensitiveValue } from "@/lib/server/sensitive-fields";
-import { deriveMemberAge } from "@/business-support/tools/member/member-tools";
-import { AreaResolver, type ResolvedArea } from "@/agent-system/gateway/area-resolver";
-import { applicationTrace } from "@/agent-system/tracing/application-trace";
+import { deriveMemberAge } from "@/lib/server/member-age";
+import { AreaResolver, type ResolvedArea } from "@/lib/server/area-resolver";
+import { applicationTrace } from "@/lib/server/query-trace";
 import type { MemberFilter, MemberQuery } from "./member-query-contract";
 import { memberQuerySchema } from "./member-query-contract";
 import { MEMBER_QUERY_FIELDS, type MemberQueryableField } from "./member-query-fields";

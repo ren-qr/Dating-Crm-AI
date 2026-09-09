@@ -3,20 +3,6 @@ import { ApiError, request, type ApiEnvelope, type PaginatedResponse } from "@/i
 
 export { ApiError, request };
 export type { ApiEnvelope, PaginatedResponse };
-/** @deprecated Import AI client types and calls from `@/interface/chat/client/ai-client`. */
-export {
-  fetchAiConfig,
-  fetchAiSettings,
-  saveAiSettings,
-  sendAiChat,
-} from "@/interface/chat/client/ai-client";
-/** @deprecated Import AI client types from `@/interface/chat/client/ai-client`. */
-export type {
-  AiAssistantConfig,
-  AiChatMessage,
-  AiChatResponse,
-  AiSettings,
-} from "@/interface/chat/client/ai-client";
 
 export type MemberStatus =
   | "LEAD"

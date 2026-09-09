@@ -7,9 +7,7 @@ export type PrivacyScan = { safe: boolean; categories: string[]; text: string };
 
 export function redactSensitiveText(input: string, names: string[] = []): string {
   let text = input;
-  for (const name of names.filter((value) => value.trim().length >= 2)) {
-    text = text.split(name).join("会员");
-  }
+  for (const name of names.filter((value) => value.trim().length >= 2)) text = text.split(name).join("会员");
   return text
     .replace(PHONE_PATTERN, "[电话已隐藏]")
     .replace(ID_CARD_PATTERN, "[证件号已隐藏]")
@@ -32,7 +30,5 @@ export function scanModelText(input: string): PrivacyScan {
 
 export function assertSafeModelText(input: string, label: string): void {
   const result = scanModelText(input);
-  if (!result.safe) {
-    throw new Error(`AI ${label}包含禁止传输的敏感字段：${result.categories.join(",")}`);
-  }
+  if (!result.safe) throw new Error(`AI ${label}包含禁止传输的敏感字段：${result.categories.join(",")}`);
 }

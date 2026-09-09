@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { parseMemberQuery, MemberQueryParseError } from "@/ai-query/parse-member-query";
-import { completeAiText } from "@/agent-system/shared/ai/client";
-import { getAiConfig } from "@/agent-system/shared/ai/config";
-import { applicationTrace } from "@/agent-system/tracing/application-trace";
+import { completeAiText } from "@/lib/server/ai/client";
+import { getAiConfig } from "@/lib/server/ai/config";
+import { applicationTrace } from "@/lib/server/query-trace";
 import { ApiCode, apiResponse, apiSuccess, getRequestId } from "@/lib/server/api-response";
 import { requireCurrentEmployee, requirePermission } from "@/lib/server/route-helpers";
 

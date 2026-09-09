@@ -5,7 +5,6 @@ import { signIn, signOut } from "next-auth/react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-import { AiAssistantFloatingEntry, AiAssistantPage } from "@/interface/web/components/ai-assistant";
 import { MemberWorkbench } from "@/interface/web/components/member-workbench";
 import {
   ApiError,
@@ -31,12 +30,12 @@ import {
   updateStore,
 } from "@/interface/shared/legacy-client/members";
 import {
-  type AiAssistantConfig,
+  type AiProviderConfig,
   type AiSettings,
   fetchAiConfig,
   fetchAiSettings,
   saveAiSettings,
-} from "@/interface/chat/client/ai-client";
+} from "@/interface/shared/client/ai-settings";
 
 const navItems = [
   { key: "dashboard", label: "概览", permission: "member:read", description: "经营指标与今日待办" },
@@ -44,7 +43,6 @@ const navItems = [
   { key: "followups", label: "跟进回访", permission: "followup:read", description: "今日回访与服务动作" },
   { key: "blacklist", label: "黑名单", permission: "blacklist:read", description: "风险记录与拦截状态" },
   { key: "audit", label: "审计", permission: "audit:read", description: "最近操作留痕" },
-  { key: "ai", label: "AI 助理", permission: "member:read", description: "会员分析、回访话术与运营问答" },
   { key: "staff", label: "人员管理", permission: "staff:read", description: "员工账号、角色与可管理范围" },
   { key: "stores", label: "门店管理", permission: "role:write", description: "门店参数与运营范围配置" },
   { key: "settings", label: "系统设置", permission: "role:write", description: "AI 模型配置状态与部署说明" },
@@ -233,7 +231,6 @@ export default function Home() {
               {activeModule === "followups" ? <FollowupView dashboard={dashboard} loading={dashboardLoading} onOpenMembers={() => setActiveModule("members")} /> : null}
               {activeModule === "blacklist" ? <BlacklistView dashboard={dashboard} loading={dashboardLoading} onOpenMembers={() => setActiveModule("members")} /> : null}
               {activeModule === "audit" ? <AuditView dashboard={dashboard} loading={dashboardLoading} /> : null}
-              {activeModule === "ai" ? <AiAssistantPage /> : null}
               {activeModule === "staff" ? <StaffManagementView employee={employee} /> : null}
               {activeModule === "stores" ? <StoreManagementView employee={employee} /> : null}
               {activeModule === "settings" ? <SettingsView employee={employee} /> : null}
@@ -241,16 +238,11 @@ export default function Home() {
           </div>
         </section>
       </div>
-      {employee ? <AiAssistantFloatingEntry /> : null}
     </main>
   );
 }
 
 function shouldShowNavItem(key: ActiveModule, employee: CurrentEmployee | null) {
-  if (key === "ai") {
-    return Boolean(employee);
-  }
-
   if (key === "staff") {
     return canManageStaff(employee);
   }
@@ -263,10 +255,6 @@ function shouldShowNavItem(key: ActiveModule, employee: CurrentEmployee | null) 
 }
 
 function isNavItemEnabled(key: ActiveModule, employee: CurrentEmployee) {
-  if (key === "ai") {
-    return Boolean(employee);
-  }
-
   if (key === "staff") {
     return canManageStaff(employee);
   }
@@ -1025,7 +1013,7 @@ function StoreManagementView({ employee }: { employee: CurrentEmployee | null })
 }
 
 function SettingsView({ employee }: { employee: CurrentEmployee | null }) {
-  const [config, setConfig] = useState<AiAssistantConfig | null>(null);
+  const [config, setConfig] = useState<AiProviderConfig | null>(null);
   const [settings, setSettings] = useState<AiSettings | null>(null);
   const [form, setForm] = useState({ provider: "ollama" as AiSettings["provider"], ollamaBaseUrl: "http://127.0.0.1:11434", ollamaModel: "qwen3.6:35b", deepseekBaseUrl: "https://api.deepseek.com", deepseekModel: "deepseek-chat", deepseekApiKey: "" });
   const [saving, setSaving] = useState(false);
@@ -1129,7 +1117,7 @@ function SettingsView({ employee }: { employee: CurrentEmployee | null }) {
   );
 }
 
-function providerLabel(provider?: AiAssistantConfig["provider"] | null) {
+function providerLabel(provider?: AiProviderConfig["provider"] | null) {
   if (provider === "ollama") return "Ollama";
   if (provider === "deepseek") return "云端模型";
   if (provider === "mock") return "Mock";

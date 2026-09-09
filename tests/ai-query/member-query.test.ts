@@ -13,7 +13,7 @@ import { executeMemberQuery } from "@/ai-query/execute-member-query";
 import { memberFilterSchema, memberQuerySchema } from "@/ai-query/member-query-contract";
 import { MEMBER_QUERY_FIELDS, isFindOnlyMemberQueryField } from "@/ai-query/member-query-fields";
 import { MemberQueryParseError, parseMemberQuery } from "@/ai-query/parse-member-query";
-import { applicationTrace, getApplicationTraceEvents } from "@/agent-system/tracing/application-trace";
+import { applicationTrace, getApplicationTraceEvents } from "@/lib/server/query-trace";
 
 const scope = { storeId: "store-a", ownerEmployeeId: "employee-a", traceId: "query-v2-trace" };
 const areas = [

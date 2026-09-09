@@ -10,8 +10,6 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "eval:agent": "AGENT_EVAL_OUTPUT_DIR=evals/results pnpm vitest run tests/agent-runtime/executable-eval.test.ts",
-    "eval:agent:real": "node scripts/run-agent-real-eval.mjs",
     "smoke:db": "bash scripts/smoke-demo.sh",
     "db:backup": "bash scripts/backup-db.sh",
     "db:restore": "bash scripts/restore-db.sh",

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { apiResponse, apiSuccess, ApiCode } from "@/lib/server/api-response";
-import { publicAiSettings, saveAiConfig } from "@/agent-system/shared/ai/config";
+import { publicAiSettings, saveAiConfig } from "@/lib/server/ai/config";
 import { requireCurrentEmployee, requirePermission, resolveStoreScope, writeAuditLog } from "@/lib/server/route-helpers";
 import { prisma } from "@/lib/server/prisma";
 

@@ -7,52 +7,37 @@
 ```text
 src/app/                    网页页面、API 接入、认证路由（Next.js 入口）
 src/interface/web/          后台网页组件
-src/interface/chat/         聊天交互客户端
 src/interface/shared/       交互层共享客户端能力
 ```
 
-当前已实现：后台网页、后台 AI 聊天入口、会员工作台、HTTP API。
+当前已实现：后台网页、会员工作台、Query V2 的结构化筛选与 AI Quick Fill、HTTP API。
 
 尚未实现：独立 APP、语音交互入口。
 
-## Agent 体系
+## Query V2
 
 ```text
-src/agent-system/runtime/   新 Manager、Context Builder 与执行循环
-src/agent-system/contracts/ 请求、动作、结果契约
-src/agent-system/gateway/   语义、权限、风险、确认、信任区管线
-src/agent-system/capabilities/ 统一能力注册与只读搜索定义
-src/agent-system/execution/ Executor 与业务适配器
-src/agent-system/result/    Result Policy
-src/agent-system/state/     Session Log / Working State / Task State
-src/agent-system/tracing/   Trace / Audit / Eval 接口与内存实现
-src/agent-system/prompts/   Manager 提示词
-src/agent-system/agents/    已弃用普通聊天和历史导航
-src/agent-system/shared/ai/
-                            AI 配置、模型调用和隐私处理
-src/agent-system/workflows/ 工作流层预留目录
-src/agent-system/schedulers/
-                            调度层预留目录
+src/ai-query/               查询合同、字段白名单、AI 解析与确定性执行
+src/lib/server/area-resolver.ts
+                            Area 字典解析（2/4/6 位编码）
+src/lib/server/query-trace.ts
+                            请求内存 Trace
+src/lib/server/ai/          Provider 配置、模型调用和隐私校验
 ```
 
-当前已实现：新 Manager 最小闭环及搜索能力。详见 [Runtime 说明](../agent-runtime-v0.3.md)。
+当前已实现：结构化会员查询和 AI Quick Fill。旧聊天 Runtime、Capability Gateway、Working State 与其专属评测已删除。
 
 当前未实现：完整后台助手 Agent、可恢复工作流、定时调度运行时。
 
 ## 业务支撑体系
 
 ```text
-src/business-support/tools/ 工具层
-src/business-support/tools/registry.ts
-                            deprecated 旧函数清单，不用于新 Runtime
-src/business-support/tools/member/
-                            会员工具
 src/business-support/permissions/
                             权限与身份实现
 src/business-support/rules/ 确定性规则预留目录
 ```
 
-当前已实现：会员查询工具、NextAuth 身份认证、权限码判断基础能力。
+当前已实现：NextAuth 身份认证、权限码判断、门店与负责人数据范围、Query V2 确定性执行。
 
 当前未集中整理：确定性业务规则仍散落在部分 API 和兼容代码中。
 

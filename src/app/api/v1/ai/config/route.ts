@@ -1,5 +1,5 @@
 import { apiSuccess } from "@/lib/server/api-response";
-import { getAiConfig, publicAiConfig } from "@/agent-system/shared/ai/config";
+import { getAiConfig, publicAiConfig } from "@/lib/server/ai/config";
 import { requireCurrentEmployee } from "@/lib/server/route-helpers";
 
 export async function GET(request: Request) {
@@ -16,7 +16,5 @@ export async function GET(request: Request) {
     modelLabel: config.configured && config.provider && config.model
       ? `${config.provider} / ${config.model}`
       : "AI 模型未配置",
-    greeting: "你好，我是 AI 红娘助手。请告诉我你希望一起梳理什么。",
-    suggestedPrompts: [],
   });
 }

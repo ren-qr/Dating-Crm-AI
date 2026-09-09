@@ -39,7 +39,7 @@ Meetra 最初是相亲机构后台管理网站，并带有面向内部工作人�
 
 ### 现有问题
 
-- 当前 AI 助手只是普通聊天，不访问会员数据、不调用业务工具、不执行业务写操作。依据：`README.md` 和 `src/app/api/v1/ai/chat/route.ts`。
+- 当前会员查询采用结构化 Query V2；AI 仅将自然语言解析为可见、可修改的筛选草案，不直接执行数据库访问。依据：`README.md`、`src/ai-query/**`、`src/app/api/v1/ai/member-query/route.ts` 和 `src/app/api/v1/members/query/route.ts`。
 - 当前代码已有 CRM 基线，但 V3 目标中的 Runtime、Policy、Tool Registry、MatchCase、AgentTask 等仍是设计概念，未实现。依据：`docs/v3/00-v3-rebuild-overview.md`、`docs/v3/02-domain-model.md`。
 - 后台管理已具备部分模块，但需求、权限、验收追踪需要统一文档化。
 

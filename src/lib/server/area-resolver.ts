@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/server/prisma";
-import type { GatewayStop } from "../contracts/gateway-result";
 
 export type ResolvedArea = {
   code: string;
@@ -7,8 +6,20 @@ export type ResolvedArea = {
   level: "PROVINCE" | "CITY" | "DISTRICT";
 };
 
+export type AreaResolutionStop = {
+  status: "ClarificationRequired";
+  message: string;
+  clarification: {
+    field: string;
+    reason: string;
+    question: string;
+    options: Array<{ id: string; label: string }>;
+  };
+};
+
+/** Resolves display names and the database's 2/4/6-digit Area codes. */
 export class AreaResolver {
-  async resolve(value: string): Promise<ResolvedArea | GatewayStop> {
+  async resolve(value: string): Promise<ResolvedArea | AreaResolutionStop> {
     const input = value.trim();
     if (!input) return clarification("location", "empty_location", "请说明需要筛选的地区。");
     const codeLevel = areaLevelForCode(input);
@@ -36,10 +47,6 @@ function areaLevelForCode(value: string): ResolvedArea["level"] | null {
 
 function selectUnambiguousArea<T extends ResolvedArea & { parentCode: string | null }>(areas: T[]): T | null {
   if (areas.length === 1) return areas[0];
-
-  // Municipalities have a province and a city row with the same display name.
-  // Natural-language location queries should resolve to the city row, which is
-  // the Member location field used for ordinary city-level filtering.
   const province = areas.find((area) => area.level === "PROVINCE");
   const city = areas.find(
     (area) => area.level === "CITY" && area.parentCode === province?.code && area.name === province.name,
@@ -52,7 +59,7 @@ function areaNameVariants(value: string) {
   return [...new Set([value, stripped, `${stripped}省`, `${stripped}市`].filter(Boolean))];
 }
 
-function clarification(field: string, reason: string, question: string): GatewayStop {
+function clarification(field: string, reason: string, question: string): AreaResolutionStop {
   return {
     status: "ClarificationRequired",
     message: question,

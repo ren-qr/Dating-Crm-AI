@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { executeMemberQuery } from "@/ai-query/execute-member-query";
 import { memberQuerySchema } from "@/ai-query/member-query-contract";
-import { applicationTrace } from "@/agent-system/tracing/application-trace";
+import { applicationTrace } from "@/lib/server/query-trace";
 import { ApiCode, apiResponse, apiSuccess, getRequestId } from "@/lib/server/api-response";
 import { requireCurrentEmployee, requirePermission, resolveStoreScope } from "@/lib/server/route-helpers";
 

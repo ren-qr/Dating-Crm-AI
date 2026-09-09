@@ -1,6 +1,6 @@
 # V3 架构重建总览
 
-> 历史快照：本目录的旧 Agent 调用链、迁移矩阵和分期计划不再约束新 Runtime。新实现以 [Agent Runtime v0.3](../agent-runtime-v0.3.md) 为准；下文保留历史，不表示当前功能状态或本轮承诺。
+> 历史快照：本目录描述的是产品演进方向，不表示当前代码路径或本轮承诺。当前会员查询实现以 `src/ai-query/`、`src/lib/server/area-resolver.ts` 和 `src/app/api/v1/members/query/route.ts` 为准。
 
 ## 目标
 
@@ -27,10 +27,10 @@ V3 的原则：Agent 只处理局部不确定性；Workflow 推进确定性流�
 
 | 类别 | 处理 |
 | --- | --- |
-| `src/components/ai-assistant.tsx` 与 `src/app/page.tsx` | 保留 AI 入口、悬浮球和聊天 UI，回归普通聊天 |
-| `src/app/api/v1/ai/chat/route.ts` | 适配为受登录保护的纯模型聊天，不读会员数据、不调用业务工具 |
-| `src/lib/server/ai/client.ts`、`config.ts`、`privacy.ts` | 保留为模型适配与配置基础 |
-| 旧意图、语义、工具调度与专用 AI 路由 | 从 V3 基线移出，未来以 Runtime/Tool Registry 重建 |
+| `src/app/page.tsx` 与 `src/interface/web/components/member-workbench.tsx` | 保留会员工作台和结构化 Query Workbench |
+| `/api/v1/ai/member-query` 与 `/api/v1/members/query` | AI 仅生成查询草案；服务器验证并执行结构化条件 |
+| `src/lib/server/ai/` | 保留为模型适配、配置与隐私校验基础 |
+| 旧聊天 Runtime、意图、语义、工具调度与专用路由 | 已从产品仓库删除；未来另行设计，不作为兼容层 |
 | CRM API、Prisma、鉴权、审计、会员工作台 | 保留，待分阶段适配 |
 
 本包是 V3 重建基线，不表示 MatchCase、任务中枢或三个业务 Agent 已实现。
