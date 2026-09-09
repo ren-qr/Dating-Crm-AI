@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 import {
@@ -164,7 +164,15 @@ const tableColumns: { key: ColumnKey; label: string; defaultVisible: boolean; so
 ];
 const defaultVisibleColumns = tableColumns.filter((column) => column.defaultVisible).map((column) => column.key);
 
-export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | null }) {
+export type MemberQuickFillRequest = { id: string; text: string };
+
+export function MemberWorkbench({
+  employee,
+  quickFillRequest,
+}: {
+  employee?: CurrentEmployee | null;
+  quickFillRequest?: MemberQuickFillRequest | null;
+}) {
   const [draftQuery, setDraftQuery] = useState(initialQuery);
   const [query, setQuery] = useState(initialQuery);
   const [members, setMembers] = useState<MemberListItem[]>([]);
@@ -188,6 +196,7 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
   const [quickFillText, setQuickFillText] = useState("");
   const [quickFillError, setQuickFillError] = useState<string | null>(null);
   const [quickFilling, setQuickFilling] = useState(false);
+  const handledQuickFillRequestId = useRef<string | null>(null);
 
   const canRead = employee === undefined || canUse("member:read", employee);
   const canWrite = employee === undefined || canUse("member:write", employee);
@@ -314,6 +323,18 @@ export function MemberWorkbench({ employee }: { employee?: CurrentEmployee | nul
       ignore = true;
     };
   }, [canWrite, canChooseOwner, employee?.employeeId]);
+
+  useEffect(() => {
+    if (!quickFillRequest || handledQuickFillRequestId.current === quickFillRequest.id) return;
+    handledQuickFillRequestId.current = quickFillRequest.id;
+    setQuickFillText(quickFillRequest.text);
+    setQuickFilling(true);
+    setQuickFillError(null);
+    void parseMemberQuery(quickFillRequest.text)
+      .then(setMemberQuery)
+      .catch((loadError) => setQuickFillError(formatError(loadError)))
+      .finally(() => setQuickFilling(false));
+  }, [quickFillRequest]);
 
   function runSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

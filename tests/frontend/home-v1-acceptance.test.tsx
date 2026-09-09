@@ -44,6 +44,26 @@ describe("精简 V1 首页验收", () => {
           });
         }
 
+        if (url === "/api/v1/ai/member-query") {
+          return Response.json({
+            code: 0,
+            message: "success",
+            data: {
+              query: {
+                task: "search_members",
+                filters: [
+                  { field: "currentLocation", op: "eq", value: "杭州" },
+                  { field: "age", op: "lte", value: 30 },
+                  { field: "gender", op: "eq", value: "FEMALE" },
+                ],
+                unresolved: [],
+              },
+            },
+            requestId: "ai-query-request",
+            timestamp: "2026-09-10T00:00:00.000Z",
+          });
+        }
+
         return Response.json({
           code: 0,
           message: "success",
@@ -67,7 +87,7 @@ describe("精简 V1 首页验收", () => {
     render(<Home />);
 
     const nav = screen.getByRole("navigation");
-    ["概览", "会员档案", "跟进回访", "黑名单", "审计"].forEach((name) => {
+    ["概览", "会员档案", "跟进回访", "黑名单", "审计", "AI 助理"].forEach((name) => {
       expect(within(nav).getByRole("button", { name })).toBeInTheDocument();
     });
     ["活动", "收费", "财务", "人员", "匹配", "导出", "备份"].forEach((name) => {
@@ -82,9 +102,26 @@ describe("精简 V1 首页验收", () => {
     expect(screen.getByText("黑名单复核")).toBeInTheDocument();
     fireEvent.click(within(nav).getByRole("button", { name: "审计" }));
     expect(screen.getByText("审计留痕")).toBeInTheDocument();
+    fireEvent.click(within(nav).getByRole("button", { name: "AI 助理" }));
+    expect(screen.getByRole("heading", { name: "AI 助理", level: 2 })).toBeInTheDocument();
     expect(screen.getByText("门店：新创朝阳店")).toBeInTheDocument();
     expect(screen.getByText("角色：管理员")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "退出登录" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "打开 AI 助理" })).toBeInTheDocument();
+  });
+
+  it("transfers an AI assistant query into the V2 workbench draft", async () => {
+    globalThis.React = React;
+    render(<Home />);
+
+    const nav = screen.getByRole("navigation");
+    fireEvent.click(await within(nav).findByRole("button", { name: "AI 助理" }));
+    fireEvent.change(screen.getByLabelText("会员查询条件"), { target: { value: "杭州30岁以下女生" } });
+    fireEvent.click(screen.getByRole("button", { name: "生成筛选条件" }));
+
+    expect(await screen.findByLabelText("会员自然语言查询")).toHaveValue("杭州30岁以下女生");
+    expect(await screen.findByText("现居地：杭州")).toBeInTheDocument();
+    expect(screen.getByText("性别：女")).toBeInTheDocument();
   });
 
   it("shows personnel, store, and system management to managers", async () => {
