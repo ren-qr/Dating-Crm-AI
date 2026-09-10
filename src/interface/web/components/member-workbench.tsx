@@ -164,15 +164,12 @@ const tableColumns: { key: ColumnKey; label: string; defaultVisible: boolean; so
 ];
 const defaultVisibleColumns = tableColumns.filter((column) => column.defaultVisible).map((column) => column.key);
 
-export type MemberQuickFillRequest = { id: string; text: string };
+export type MemberDetailRequest = {
+  id: string;
+  requestId: string;
+};
 
-export function MemberWorkbench({
-  employee,
-  quickFillRequest,
-}: {
-  employee?: CurrentEmployee | null;
-  quickFillRequest?: MemberQuickFillRequest | null;
-}) {
+export function MemberWorkbench({ employee, memberDetailRequest }: { employee?: CurrentEmployee | null; memberDetailRequest?: MemberDetailRequest | null }) {
   const [draftQuery, setDraftQuery] = useState(initialQuery);
   const [query, setQuery] = useState(initialQuery);
   const [members, setMembers] = useState<MemberListItem[]>([]);
@@ -196,7 +193,7 @@ export function MemberWorkbench({
   const [quickFillText, setQuickFillText] = useState("");
   const [quickFillError, setQuickFillError] = useState<string | null>(null);
   const [quickFilling, setQuickFilling] = useState(false);
-  const handledQuickFillRequestId = useRef<string | null>(null);
+  const handledMemberDetailRequest = useRef<string | null>(null);
 
   const canRead = employee === undefined || canUse("member:read", employee);
   const canWrite = employee === undefined || canUse("member:write", employee);
@@ -325,16 +322,17 @@ export function MemberWorkbench({
   }, [canWrite, canChooseOwner, employee?.employeeId]);
 
   useEffect(() => {
-    if (!quickFillRequest || handledQuickFillRequestId.current === quickFillRequest.id) return;
-    handledQuickFillRequestId.current = quickFillRequest.id;
-    setQuickFillText(quickFillRequest.text);
-    setQuickFilling(true);
-    setQuickFillError(null);
-    void parseMemberQuery(quickFillRequest.text)
-      .then(setMemberQuery)
-      .catch((loadError) => setQuickFillError(formatError(loadError)))
-      .finally(() => setQuickFilling(false));
-  }, [quickFillRequest]);
+    if (!memberDetailRequest || handledMemberDetailRequest.current === memberDetailRequest.requestId) return;
+    handledMemberDetailRequest.current = memberDetailRequest.requestId;
+
+    fetchMemberDetail(memberDetailRequest.id)
+      .then((detail) => {
+        setSelectedMember(detail);
+      })
+      .catch((loadError) => {
+        setError(`会员详情加载失败：${formatError(loadError)}`);
+      });
+  }, [memberDetailRequest]);
 
   function runSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

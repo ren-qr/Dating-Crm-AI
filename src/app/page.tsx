@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 
 import { AiQueryAssistantFloatingEntry, AiQueryAssistantPage } from "@/interface/web/components/ai-query-assistant";
 import { MemberWorkbench } from "@/interface/web/components/member-workbench";
-import type { MemberQuickFillRequest } from "@/interface/web/components/member-workbench";
+import type { AssistantConversationMessage } from "@/interface/shared/client/assistant";
 import {
   ApiError,
   CreateStaffInput,
@@ -45,7 +45,7 @@ const navItems = [
   { key: "followups", label: "跟进回访", permission: "followup:read", description: "今日回访与服务动作" },
   { key: "blacklist", label: "黑名单", permission: "blacklist:read", description: "风险记录与拦截状态" },
   { key: "audit", label: "审计", permission: "audit:read", description: "最近操作留痕" },
-  { key: "ai", label: "AI 助理", permission: "member:read", description: "会员查询条件快速生成" },
+  { key: "ai", label: "AI 助理", permission: "member:read", description: "自然语言对话与会员查询" },
   { key: "staff", label: "人员管理", permission: "staff:read", description: "员工账号、角色与可管理范围" },
   { key: "stores", label: "门店管理", permission: "role:write", description: "门店参数与运营范围配置" },
   { key: "settings", label: "系统设置", permission: "role:write", description: "AI 模型配置状态与部署说明" },
@@ -53,6 +53,7 @@ const navItems = [
 
 const COMPANY_NAME = "Meetra";
 const STAFF_EMAIL_DOMAIN = "@meetra.local";
+const ASSISTANT_SESSION_STORAGE_KEY = "meetra.ai-assistant.messages.v1";
 
 type ActiveModule = (typeof navItems)[number]["key"];
 
@@ -64,7 +65,9 @@ export default function Home() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<ActiveModule>("dashboard");
-  const [quickFillRequest, setQuickFillRequest] = useState<MemberQuickFillRequest | null>(null);
+  const [assistantMessages, setAssistantMessages] = useState<AssistantConversationMessage[]>([]);
+  const [assistantSessionReady, setAssistantSessionReady] = useState(false);
+  const [memberDetailRequest, setMemberDetailRequest] = useState<{ id: string; requestId: string } | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -132,6 +135,25 @@ export default function Home() {
     };
   }, [employee]);
 
+  useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(ASSISTANT_SESSION_STORAGE_KEY);
+      const parsed = stored ? JSON.parse(stored) : null;
+      if (Array.isArray(parsed)) {
+        setAssistantMessages(parsed as AssistantConversationMessage[]);
+      }
+    } catch {
+      window.sessionStorage.removeItem(ASSISTANT_SESSION_STORAGE_KEY);
+    } finally {
+      setAssistantSessionReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!assistantSessionReady) return;
+    window.sessionStorage.setItem(ASSISTANT_SESSION_STORAGE_KEY, JSON.stringify(assistantMessages));
+  }, [assistantMessages, assistantSessionReady]);
+
   const visiblePermissions = useMemo(() => employee?.permissions.slice(0, 4) ?? [], [employee]);
   const memberReadable = employee ? canUse("member:read", employee) : true;
   const visibleNavItems = useMemo(() => navItems.filter((item) => shouldShowNavItem(item.key, employee)), [employee]);
@@ -145,8 +167,8 @@ export default function Home() {
       ]
     : [];
 
-  function startAiQuery(text: string) {
-    setQuickFillRequest({ id: `${Date.now()}-${text}`, text });
+  function openAssistantMember(memberId: string) {
+    setMemberDetailRequest({ id: memberId, requestId: `${Date.now()}-${memberId}` });
     setActiveModule("members");
   }
 
@@ -236,11 +258,11 @@ export default function Home() {
 
             <div className="mt-4">
               {activeModule === "dashboard" ? <DashboardView dashboard={dashboard} loading={dashboardLoading} metrics={metrics} onOpenMembers={() => setActiveModule("members")} /> : null}
-              {activeModule === "members" ? <MemberWorkbench employee={employee ?? undefined} quickFillRequest={quickFillRequest} /> : null}
+              {activeModule === "members" ? <MemberWorkbench employee={employee ?? undefined} memberDetailRequest={memberDetailRequest} /> : null}
               {activeModule === "followups" ? <FollowupView dashboard={dashboard} loading={dashboardLoading} onOpenMembers={() => setActiveModule("members")} /> : null}
               {activeModule === "blacklist" ? <BlacklistView dashboard={dashboard} loading={dashboardLoading} onOpenMembers={() => setActiveModule("members")} /> : null}
               {activeModule === "audit" ? <AuditView dashboard={dashboard} loading={dashboardLoading} /> : null}
-              {activeModule === "ai" ? <AiQueryAssistantPage onStartQuery={startAiQuery} /> : null}
+              {activeModule === "ai" ? <AiQueryAssistantPage messages={assistantMessages} onMessagesChange={setAssistantMessages} onOpenMember={openAssistantMember} /> : null}
               {activeModule === "staff" ? <StaffManagementView employee={employee} /> : null}
               {activeModule === "stores" ? <StoreManagementView employee={employee} /> : null}
               {activeModule === "settings" ? <SettingsView employee={employee} /> : null}
@@ -248,7 +270,7 @@ export default function Home() {
           </div>
         </section>
       </div>
-      {employee && memberReadable ? <AiQueryAssistantFloatingEntry onStartQuery={startAiQuery} /> : null}
+      {employee && memberReadable ? <AiQueryAssistantFloatingEntry messages={assistantMessages} onMessagesChange={setAssistantMessages} onOpenMember={openAssistantMember} /> : null}
     </main>
   );
 }

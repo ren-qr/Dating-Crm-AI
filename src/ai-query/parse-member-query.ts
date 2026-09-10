@@ -36,7 +36,7 @@ export async function parseMemberQuery(
   const input = text.trim();
   if (!input) throw new MemberQueryParseError("请输入会员查询条件。");
 
-  const sensitiveQuery = findLocalSensitiveIdentifier(input);
+  const sensitiveQuery = findLocalSensitiveMemberQuery(input);
   if (sensitiveQuery) return sensitiveQuery;
 
   let raw: string;
@@ -47,15 +47,14 @@ export async function parseMemberQuery(
   }
 
   try {
-    const parsed = memberQuerySchema.safeParse(normalizeNumericFilterValues(JSON.parse(extractJson(raw))));
-    if (!parsed.success) throw new Error("Invalid member query");
-    return parsed.data;
+    return parseMemberQueryValue(JSON.parse(extractJsonObject(raw)));
   } catch {
     throw new MemberQueryParseError();
   }
 }
 
-function findLocalSensitiveIdentifier(text: string): MemberQuery | null {
+/** Builds an exact Query V2 lookup locally so sensitive identifiers never reach a model. */
+export function findLocalSensitiveMemberQuery(text: string): MemberQuery | null {
   const phone = text.match(phoneCandidatePattern)?.[0];
   const normalizedPhone = phone ? normalizePhone(phone).replace(/^\+?86/u, "") : null;
   if (normalizedPhone && /^1[3-9]\d{9}$/u.test(normalizedPhone)) {
@@ -68,7 +67,15 @@ function findLocalSensitiveIdentifier(text: string): MemberQuery | null {
   return null;
 }
 
-function extractJson(value: string) {
+/** Validates a model-produced value through the single Query V2 contract. */
+export function parseMemberQueryValue(value: unknown): MemberQuery {
+  const parsed = memberQuerySchema.safeParse(normalizeNumericFilterValues(value));
+  if (!parsed.success) throw new MemberQueryParseError();
+  return parsed.data;
+}
+
+/** Extracts one JSON object from a model response without accepting surrounding prose as data. */
+export function extractJsonObject(value: string) {
   const trimmed = value.trim().replace(/^```json\s*/iu, "").replace(/\s*```$/u, "");
   const start = trimmed.indexOf("{");
   const end = trimmed.lastIndexOf("}");

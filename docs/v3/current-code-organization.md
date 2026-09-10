@@ -10,7 +10,7 @@ src/interface/web/          后台网页组件
 src/interface/shared/       交互层共享客户端能力
 ```
 
-当前已实现：后台网页、会员工作台、Query V2 的结构化筛选与 AI Quick Fill、HTTP API。
+当前已实现：后台网页、会员工作台、Query V2 的结构化筛选与 AI Quick Fill、共享 Assistant Core 的左侧 AI 页面和右下角悬浮对话入口、HTTP API。
 
 尚未实现：独立 APP、语音交互入口。
 
@@ -18,6 +18,7 @@ src/interface/shared/       交互层共享客户端能力
 
 ```text
 src/ai-query/               查询合同、字段白名单、AI 解析与确定性执行
+src/ai-assistant/           Assistant Core：reply | query_members 动作解析
 src/lib/server/area-resolver.ts
                             Area 字典解析（2/4/6 位编码）
 src/lib/server/query-trace.ts
@@ -25,9 +26,9 @@ src/lib/server/query-trace.ts
 src/lib/server/ai/          Provider 配置、模型调用和隐私校验
 ```
 
-当前已实现：结构化会员查询和 AI Quick Fill。旧聊天 Runtime、Capability Gateway、Working State 与其专属评测已删除。
+当前已实现：结构化会员查询和 AI Quick Fill；AI 助理仅可普通对话或将 `query_members` 交给同一个 Query V2 执行器。旧聊天 Runtime、Capability Gateway、Working State 与其专属评测已删除。
 
-当前未实现：完整后台助手 Agent、可恢复工作流、定时调度运行时。
+当前未实现：可恢复工作流、定时调度运行时，以及多工具的完整后台助手 Agent。
 
 ## 业务支撑体系
 

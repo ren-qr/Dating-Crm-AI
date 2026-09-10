@@ -20,10 +20,11 @@ describe("精简 V1 首页验收", () => {
     authMocks.signIn.mockReset();
     authMocks.signOut.mockReset();
     authMocks.signOut.mockResolvedValue({ url: "http://localhost:3000/" });
+    window.sessionStorage.clear();
 
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
 
         if (url === "/api/v1/me") {
@@ -60,6 +61,65 @@ describe("精简 V1 首页验收", () => {
               },
             },
             requestId: "ai-query-request",
+            timestamp: "2026-09-10T00:00:00.000Z",
+          });
+        }
+
+        if (url === "/api/v1/ai/assistant") {
+          const latestMessage = JSON.parse(String(init?.body)).messages.at(-1)?.content;
+          if (latestMessage === "30岁女生") {
+            return Response.json({
+              code: 0,
+              message: "success",
+              data: {
+                action: {
+                  type: "query_members",
+                  query: {
+                    task: "search_members",
+                    filters: [
+                      { field: "age", op: "eq", value: 30 },
+                      { field: "gender", op: "eq", value: "FEMALE" },
+                    ],
+                    unresolved: [],
+                  },
+                },
+                content: "找到 1 位符合条件的会员。",
+                result: {
+                  task: "search_members",
+                  items: [{
+                    id: "member_1",
+                    memberNo: "M001",
+                    name: "林若妍",
+                    age: 30,
+                    gender: "FEMALE",
+                    status: "ACTIVE",
+                    heightCm: 165,
+                    weightKg: null,
+                    occupation: "设计师",
+                    education: "本科",
+                    maritalStatus: "未婚",
+                    currentLocation: { province: "浙江省", city: "杭州市", district: "西湖区" },
+                    profileCompletenessPercent: 80,
+                  }],
+                  page: 1,
+                  pageSize: 20,
+                  total: 1,
+                  hasNext: false,
+                },
+              },
+              requestId: "assistant-query-request",
+              timestamp: "2026-09-10T00:00:00.000Z",
+            });
+          }
+
+          return Response.json({
+            code: 0,
+            message: "success",
+            data: {
+              action: { type: "reply" },
+              content: "你好，我可以协助普通对话或查询会员。",
+            },
+            requestId: "assistant-request",
             timestamp: "2026-09-10T00:00:00.000Z",
           });
         }
@@ -110,18 +170,44 @@ describe("精简 V1 首页验收", () => {
     expect(screen.getByRole("button", { name: "打开 AI 助理" })).toBeInTheDocument();
   });
 
-  it("transfers an AI assistant query into the V2 workbench draft", async () => {
+  it("uses the shared AI assistant chat instead of the Query V2 workbench draft", async () => {
     globalThis.React = React;
     render(<Home />);
 
     const nav = screen.getByRole("navigation");
     fireEvent.click(await within(nav).findByRole("button", { name: "AI 助理" }));
-    fireEvent.change(screen.getByLabelText("会员查询条件"), { target: { value: "杭州30岁以下女生" } });
-    fireEvent.click(screen.getByRole("button", { name: "生成筛选条件" }));
+    const messageInput = screen.getByLabelText("输入消息");
+    fireEvent.change(messageInput, { target: { value: "你好" } });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
 
-    expect(await screen.findByLabelText("会员自然语言查询")).toHaveValue("杭州30岁以下女生");
-    expect(await screen.findByText("现居地：杭州")).toBeInTheDocument();
-    expect(screen.getByText("性别：女")).toBeInTheDocument();
+    expect(await screen.findByText("你好，我可以协助普通对话或查询会员。")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "生成筛选条件" })).not.toBeInTheDocument();
+    expect(screen.queryByText("识别结果")).not.toBeInTheDocument();
+  });
+
+  it("opens the same chat interaction from the floating assistant", async () => {
+    globalThis.React = React;
+    render(<Home />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "打开 AI 助理" }));
+
+    expect(screen.getByRole("dialog", { name: "AI 助理" })).toBeInTheDocument();
+    expect(screen.getByLabelText("输入消息")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "生成筛选条件" })).not.toBeInTheDocument();
+  });
+
+  it("shows Assistant member results as direct cards", async () => {
+    globalThis.React = React;
+    render(<Home />);
+
+    const nav = screen.getByRole("navigation");
+    fireEvent.click(await within(nav).findByRole("button", { name: "AI 助理" }));
+    fireEvent.change(screen.getByLabelText("输入消息"), { target: { value: "30岁女生" } });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+
+    expect(await screen.findByText("林若妍")).toBeInTheDocument();
+    expect(screen.getByText("30岁 · 女 · 设计师 · 本科")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /林若妍/ })).toBeInTheDocument();
   });
 
   it("shows personnel, store, and system management to managers", async () => {
