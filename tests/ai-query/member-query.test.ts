@@ -106,6 +106,27 @@ describe("Member Query V2 contract", () => {
     ]);
   });
 
+  it("normalizes numeric strings returned by the configured model without relaxing other fields", async () => {
+    const query = await parseMemberQuery("30岁女生", async () => JSON.stringify({
+      task: "search_members",
+      filters: [
+        { field: "age", op: "eq", value: "30" },
+        { field: "gender", op: "eq", value: "FEMALE" },
+      ],
+      unresolved: [],
+    }));
+    expect(query.filters).toEqual([
+      { field: "age", op: "eq", value: 30 },
+      { field: "gender", op: "eq", value: "FEMALE" },
+    ]);
+
+    await expect(parseMemberQuery("查询", async () => JSON.stringify({
+      task: "search_members",
+      filters: [{ field: "age", op: "eq", value: "三十" }],
+      unresolved: [],
+    }))).rejects.toBeInstanceOf(MemberQueryParseError);
+  });
+
   it("does not send sensitive identifiers to the parser and builds a local exact find query", async () => {
     const complete = vi.fn();
     await expect(parseMemberQuery("查手机号 138 0013 8000 的会员", complete)).resolves.toEqual({
