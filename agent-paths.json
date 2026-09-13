@@ -10,7 +10,7 @@
         "src/app/api/**",
         "src/server/**",
         "src/lib/server/**",
-        "src/lib/auth/**"
+        "src/business-support/**"
       ]
     },
     "frontend-engineer": {
@@ -20,10 +20,9 @@
       "owner": [
         "src/app/(public)/**",
         "src/app/(admin)/**",
-        "src/components/**",
+        "src/interface/**",
         "src/app/layout.tsx",
         "src/app/globals.css",
-        "src/lib/client/**",
         "src/styles/**",
         "public/**"
       ]
@@ -73,7 +72,7 @@
         "docker/**",
         "deploy/**",
         "README.md",
-        "docs/*.md",
+        "docs/**",
         "package.json",
         "pnpm-lock.yaml",
         "tsconfig.json",

@@ -6,13 +6,12 @@
 /src/app/api/**  @backend-engineer
 /src/server/**  @backend-engineer
 /src/lib/server/**  @backend-engineer
-/src/lib/auth/**  @backend-engineer
+/src/business-support/**  @backend-engineer
 /src/app/(public)/**  @frontend-engineer
 /src/app/(admin)/**  @frontend-engineer
-/src/components/**  @frontend-engineer
+/src/interface/**  @frontend-engineer
 /src/app/layout.tsx  @frontend-engineer
 /src/app/globals.css  @frontend-engineer
-/src/lib/client/**  @frontend-engineer
 /src/styles/**  @frontend-engineer
 /public/**  @frontend-engineer
 /prisma/**  @database-engineer
@@ -34,7 +33,7 @@
 /docker/**  @devops-engineer
 /deploy/**  @devops-engineer
 /README.md  @devops-engineer
-/docs/*.md  @devops-engineer
+/docs/**  @devops-engineer
 /package.json  @devops-engineer
 /pnpm-lock.yaml  @devops-engineer
 /tsconfig.json  @devops-engineer
